@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --font-thai: "Noto Sans Thai", system-ui, sans-serif;
+}
+
+html, body {
+  font-family: var(--font-thai);
+  background-color: #f8fafc;
+  color: #0f172a;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Disable iOS double-tap zoom on form controls */
+input, select, textarea, button {
+  font-size: 16px;
+}

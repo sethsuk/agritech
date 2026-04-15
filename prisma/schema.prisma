@@ -1,0 +1,73 @@
+// Prisma schema for the durian farm worker app.
+// Run `npm run db:migrate` after editing.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Tree {
+  id           String   @id // e.g. "TREE-001"
+  zone         String              // "A", "B", "C", "D", "E"
+  variety      String              // "Chanee" or "Monthong"
+  plantedDate  DateTime
+  status       String   @default("active")
+  latitude     Float?
+  longitude    Float?
+  inspections  Inspection[]
+  fruitBatches FruitBatch[]
+  createdAt    DateTime @default(now())
+
+  @@index([zone])
+}
+
+model Worker {
+  id          String        @id // e.g. "WORKER-001"
+  name        String                  // Thai name
+  phone       String?
+  inspections Inspection[]
+  harvests    FruitBatch[]  @relation("HarvestedBy")
+  createdAt   DateTime      @default(now())
+}
+
+model Inspection {
+  id                 String   @id @default(cuid())
+  treeId             String
+  tree               Tree     @relation(fields: [treeId], references: [id])
+  workerId           String
+  worker             Worker   @relation(fields: [workerId], references: [id])
+  healthGrade        String              // "A", "B", "C"
+  flowerCount        Int?
+  fruitCount         Int?
+  issuesFound        String              // JSON array as string: ["ใบเหลือง", "เพลี้ย"]
+  notes              String?
+  photoUrls          String?             // JSON array as string of Supabase Storage URLs
+  latitude           Float?
+  longitude          Float?
+  fertilizerApplied  Boolean  @default(false)
+  pesticideApplied   Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  @@index([treeId, createdAt])
+  @@index([workerId, createdAt])
+}
+
+model FruitBatch {
+  id            String    @id @default(cuid())
+  treeId        String
+  tree          Tree      @relation(fields: [treeId], references: [id])
+  colorTag      String                // "red" | "green" | "blue" (matches config.fruitBatchColors)
+  bloomDate     DateTime
+  harvestedAt   DateTime?
+  harvestedById String?
+  harvestedBy   Worker?   @relation("HarvestedBy", fields: [harvestedById], references: [id])
+  notes         String?
+  createdAt     DateTime  @default(now())
+
+  @@index([treeId, harvestedAt])
+}
