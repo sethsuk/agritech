@@ -8,16 +8,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:migrate": "prisma migrate dev",
-    "db:generate": "prisma generate",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "db:push": "supabase db push",
+    "db:seed:trees": "tsx supabase/seed/02_trees.ts",
+    "db:reset": "supabase db reset"
   },
   "dependencies": {
-    "@prisma/client": "^6.1.0",
+    "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.47.10",
     "browser-image-compression": "^2.0.2",
     "html5-qrcode": "^2.3.8",
@@ -26,17 +22,17 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-leaflet": "^5.0.0",
-    "sonner": "^1.7.1"
+    "sonner": "^1.7.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
     "@types/leaflet": "^1.9.15",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
-    "prisma": "^6.1.0",
-    "tailwindcss": "^4.0.0",
-    "@tailwindcss/postcss": "^4.0.0",
     "postcss": "^8.5.1",
+    "tailwindcss": "^4.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }

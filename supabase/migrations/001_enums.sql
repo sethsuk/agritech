@@ -1,0 +1,16 @@
+CREATE TYPE tree_status AS ENUM ('active', 'retired', 'dead');
+CREATE TYPE set_status AS ENUM ('flowering', 'developing', 'harvesting', 'harvested', 'failed');
+CREATE TYPE worker_trust_tier AS ENUM ('trusted', 'standard', 'audit');
+CREATE TYPE worker_language AS ENUM ('my', 'th', 'en');
+CREATE TYPE photo_policy_mode AS ENUM ('always', 'audit_only', 'never');
+CREATE TYPE photo_requirement_reason AS ENUM ('task_default', 'random_audit', 'alert_followup', 'none');
+CREATE TYPE assignment_source AS ENUM ('recurring', 'alert_triggered', 'manual');
+CREATE TYPE assignment_status AS ENUM ('pending', 'in_progress', 'completed', 'overdue', 'skipped');
+CREATE TYPE assignment_priority AS ENUM ('low', 'normal', 'high', 'urgent');
+CREATE TYPE alert_tier AS ENUM ('tier_1', 'tier_2', 'tier_3');
+CREATE TYPE alert_category AS ENUM ('farm_health', 'fraud_signal', 'inactivity', 'compliance');
+CREATE TYPE alert_status AS ENUM ('open', 'reviewed', 'resolved', 'dismissed');
+CREATE TYPE validation_status AS ENUM ('passed', 'flagged', 'rejected');
+CREATE TYPE severity AS ENUM ('none', 'mild', 'moderate', 'severe');
+CREATE TYPE user_role AS ENUM ('worker', 'manager', 'owner');
+CREATE TYPE generation_color AS ENUM ('red', 'blue', 'yellow', 'white');

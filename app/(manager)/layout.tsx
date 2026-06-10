@@ -1,0 +1,51 @@
+import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export default async function ManagerLayout({ children }: { children: ReactNode }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("users")
+    .select("role, display_name")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || (profile.role !== "manager" && profile.role !== "owner")) {
+    redirect("/scan");
+  }
+
+  return (
+    <div className="flex min-h-dvh flex-col bg-slate-50 font-[family-name:var(--font-thai)]">
+      {/* Top nav */}
+      <nav className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3">
+        <div className="mx-auto flex max-w-6xl items-center gap-6">
+          <span className="text-lg font-bold text-emerald-700">🌳 ระบบสวนทุเรียน</span>
+          <div className="hidden gap-4 sm:flex">
+            <Link href="/dashboard" className="text-sm text-slate-600 hover:text-emerald-700">
+              ภาพรวม
+            </Link>
+            <Link href="/alerts" className="text-sm text-slate-600 hover:text-emerald-700">
+              การแจ้งเตือน
+            </Link>
+            <Link href="/workers" className="text-sm text-slate-600 hover:text-emerald-700">
+              คนงาน
+            </Link>
+            <Link href="/trees" className="text-sm text-slate-600 hover:text-emerald-700">
+              ต้นทุเรียน
+            </Link>
+          </div>
+          <div className="ml-auto text-sm text-slate-500">{profile.display_name}</div>
+        </div>
+      </nav>
+
+      <main className="flex-1">{children}</main>
+    </div>
+  );
+}

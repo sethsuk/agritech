@@ -1,42 +1,36 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-export const dynamic = "force-dynamic";
-
+// GET /api/trees/:id — lookup active tree by tree_id OR qr_code.
 export async function GET(
   _req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params;
-  const tree = await prisma.tree.findUnique({
-    where: { id },
-    include: {
-      inspections: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { createdAt: true, healthGrade: true },
-      },
-      fruitBatches: {
-        where: { harvestedAt: null },
-        orderBy: { bloomDate: "asc" },
-        select: { id: true, colorTag: true, bloomDate: true, notes: true },
-      },
-    },
-  });
 
-  if (!tree) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const admin = createAdminClient();
+  const { data: tree, error } = await admin
+    .from("trees")
+    .select("*")
+    .or(`tree_id.eq.${id},qr_code.eq.${id}`)
+    .eq("status", "active")
+    .single();
+
+  if (error || !tree) {
     return NextResponse.json({ error: "ไม่พบต้นไม้รหัสนี้" }, { status: 404 });
   }
 
-  return NextResponse.json({
-    id: tree.id,
-    zone: tree.zone,
-    variety: tree.variety,
-    plantedDate: tree.plantedDate,
-    latitude: tree.latitude,
-    longitude: tree.longitude,
-    lastInspectionAt: tree.inspections[0]?.createdAt ?? null,
-    lastInspectionGrade: tree.inspections[0]?.healthGrade ?? null,
-    activeFruitBatches: tree.fruitBatches,
-  });
+  const { data: sets } = await admin
+    .from("sets")
+    .select("*")
+    .eq("tree_id", tree.tree_id)
+    .not("status", "in", '("harvested","failed")')
+    .order("created_at", { ascending: false });
+
+  return NextResponse.json({ tree, sets: sets ?? [] });
 }

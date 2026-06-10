@@ -10,8 +10,8 @@ const notoThai = Noto_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: "ระบบตรวจสวนทุเรียน",
-  description: "บันทึกข้อมูลการตรวจต้นทุเรียนสำหรับคนงาน",
+  title: "ระบบบริหารสวนทุเรียน",
+  description: "ระบบบันทึกและตรวจสอบการดูแลสวนทุเรียน",
 };
 
 export const viewport: Viewport = {

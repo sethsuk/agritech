@@ -1,14 +1,15 @@
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Root: redirect to the right dashboard based on auth + role.
-export default async function RootPage() {
+export default async function WorkerLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
 
+  // Ensure role is worker (managers who navigate here should go to /dashboard)
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("users")
@@ -20,5 +21,9 @@ export default async function RootPage() {
     redirect("/dashboard");
   }
 
-  redirect("/scan");
+  return (
+    <div className="min-h-dvh bg-slate-50 font-[family-name:var(--font-thai)]">
+      {children}
+    </div>
+  );
 }
