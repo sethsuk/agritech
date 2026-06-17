@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { QrScanner } from "@/components/worker/QrScanner";
-import { createClient } from "@/lib/supabase/client";
+import { WorkerHeader } from "@/components/worker/WorkerHeader";
 
 export default function ScanPage() {
   const router = useRouter();
@@ -51,29 +51,13 @@ export default function ScanPage() {
     await navigateToTree(manualId.trim().toUpperCase(), new Date().toISOString());
   }
 
-  async function handleLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
-
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col px-4 py-6">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">สแกน QR</h1>
-          <p className="text-sm text-slate-500">สแกน QR code ที่ต้นทุเรียน</p>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="rounded-lg px-3 py-1.5 text-sm text-slate-500 active:bg-slate-100"
-        >
-          ออกจากระบบ
-        </button>
-      </header>
+    <div className="flex min-h-dvh flex-col">
+      <WorkerHeader variant="home" />
 
-      <div className="flex-1 space-y-4">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-6">
+        <p className="mb-4 text-sm text-slate-500">สแกน QR code ที่ต้นทุเรียน</p>
+        <div className="flex-1 space-y-4">
         <QrScanner
           onDecode={handleQrDecode}
           onUnavailable={() => toast.info("ไม่สามารถเข้าถึงกล้อง ใช้การพิมพ์รหัสแทน")}
@@ -107,7 +91,8 @@ export default function ScanPage() {
             ค้นหา
           </button>
         </form>
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n/t";
+import { WorkerHeader } from "@/components/worker/WorkerHeader";
 import { TaskFormRenderer } from "@/components/worker/TaskFormRenderer";
 import { PhotoCapture } from "@/components/worker/PhotoCapture";
 import type { DbTaskDefinition, DbTree } from "@/types/database";
@@ -71,6 +72,12 @@ export default function TaskFormPage() {
       })
       .finally(() => setLoading(false));
   }, [treeId, taskDefId, router]);
+
+  function handleBack() {
+    const hasInput = Object.keys(formData).length > 0 || photoUrl !== null;
+    if (hasInput && !window.confirm("ออกจากฟอร์มนี้? ข้อมูลที่กรอกไว้จะหายไป")) return;
+    router.back();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -151,22 +158,19 @@ export default function TaskFormPage() {
   if (!taskDef || !tree || !startLog) return null;
 
   return (
-    <main className="mx-auto max-w-md px-4 pt-6 pb-32">
-      <button
-        onClick={() => router.back()}
-        className="mb-4 flex items-center gap-1 text-sm text-slate-500"
-      >
-        ← กลับ
-      </button>
+    <div className="flex min-h-dvh flex-col">
+      <WorkerHeader
+        variant="back"
+        title={t(taskDef.display_name)}
+        onBack={handleBack}
+      />
 
-      {/* Task header */}
-      <div className="mb-6 flex items-center gap-3">
-        <span className="text-3xl">{taskDef.display_name.icon ?? "📋"}</span>
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">{t(taskDef.display_name)}</h1>
-          <p className="text-sm text-slate-500">{tree.tree_id} · {tree.zone} · {tree.variety}</p>
-        </div>
-      </div>
+      <main className="mx-auto w-full max-w-md flex-1 px-4 pt-4 pb-32">
+      {/* Tree context */}
+      <p className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <span className="text-xl">{taskDef.display_name.icon ?? "📋"}</span>
+        {tree.tree_id} · {tree.zone} · {tree.variety}
+      </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <TaskFormRenderer
@@ -205,6 +209,7 @@ export default function TaskFormPage() {
           </div>
         </div>
       </form>
-    </main>
+      </main>
+    </div>
   );
 }

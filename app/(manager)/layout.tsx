@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ManagerBottomNav } from "@/components/manager/ManagerBottomNav";
 
 export default async function ManagerLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -22,30 +23,25 @@ export default async function ManagerLayout({ children }: { children: ReactNode 
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-slate-50 font-[family-name:var(--font-thai)]">
-      {/* Top nav */}
+    <div className="flex min-h-dvh flex-col bg-slate-50">
+      {/* Top nav — desktop only */}
       <nav className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3">
         <div className="mx-auto flex max-w-6xl items-center gap-6">
           <span className="text-lg font-bold text-emerald-700">🌳 ระบบสวนทุเรียน</span>
           <div className="hidden gap-4 sm:flex">
-            <Link href="/dashboard" className="text-sm text-slate-600 hover:text-emerald-700">
-              ภาพรวม
-            </Link>
-            <Link href="/alerts" className="text-sm text-slate-600 hover:text-emerald-700">
-              การแจ้งเตือน
-            </Link>
-            <Link href="/workers" className="text-sm text-slate-600 hover:text-emerald-700">
-              คนงาน
-            </Link>
-            <Link href="/trees" className="text-sm text-slate-600 hover:text-emerald-700">
-              ต้นทุเรียน
-            </Link>
+            <Link href="/dashboard" className="text-sm text-slate-600 hover:text-emerald-700">ภาพรวม</Link>
+            <Link href="/alerts"    className="text-sm text-slate-600 hover:text-emerald-700">การแจ้งเตือน</Link>
+            <Link href="/workers"   className="text-sm text-slate-600 hover:text-emerald-700">คนงาน</Link>
+            <Link href="/trees"     className="text-sm text-slate-600 hover:text-emerald-700">ต้นทุเรียน</Link>
           </div>
           <div className="ml-auto text-sm text-slate-500">{profile.display_name}</div>
         </div>
       </nav>
 
-      <main className="flex-1">{children}</main>
+      {/* Extra bottom padding on mobile so content clears the bottom tab bar */}
+      <main className="flex-1 pb-20 sm:pb-0">{children}</main>
+
+      <ManagerBottomNav />
     </div>
   );
 }

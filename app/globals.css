@@ -19,3 +19,16 @@ button, [role="button"] {
 input, select, textarea, button {
   font-size: 16px;
 }
+
+/* html5-qrcode sets inline width/height on the video element —
+   force it to fill and crop the container instead. */
+#qr-scanner-region video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  position: absolute !important;
+  inset: 0 !important;
+}
+#qr-scanner-region {
+  position: relative !important;
+}

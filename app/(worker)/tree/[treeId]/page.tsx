@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n/t";
+import { WorkerHeader } from "@/components/worker/WorkerHeader";
 import type { DbTree, DbTaskDefinition, DbSet } from "@/types/database";
 
 interface TreeData {
@@ -57,14 +58,14 @@ export default function TreeDetailPage() {
   const { tree, sets } = treeData;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col px-4 py-6">
-      <button
-        onClick={() => router.push("/scan")}
-        className="mb-4 flex items-center gap-1 text-sm text-slate-500 active:text-slate-700"
-      >
-        ← สแกนใหม่
-      </button>
+    <div className="flex min-h-dvh flex-col">
+      <WorkerHeader
+        variant="back"
+        title={`ต้น ${tree.tree_id}`}
+        onBack={() => router.push("/scan")}
+      />
 
+      <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
       {/* Tree info card */}
       <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm">
         <div className="flex items-start justify-between">
@@ -126,6 +127,7 @@ export default function TreeDetailPage() {
           </button>
         ))}
       </div>
-    </main>
+      </main>
+    </div>
   );
 }
