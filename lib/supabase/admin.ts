@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 let cached: ReturnType<typeof createClient> | null = null;
 
@@ -10,6 +11,7 @@ export function createAdminClient() {
   if (!url || !key) throw new Error("Missing Supabase admin env vars");
   cached = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    realtime: { transport: ws },
   });
   return cached;
 }

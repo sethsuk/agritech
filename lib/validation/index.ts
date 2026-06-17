@@ -23,6 +23,11 @@ export interface ValidationOutput {
 }
 
 export function validate(input: ValidationInput): ValidationOutput {
+  // Allow disabling field validation during local development/testing
+  if (process.env.SKIP_VALIDATION === "true") {
+    return { status: "passed", flags: [], gpsDistanceMeters: null };
+  }
+
   const allFlags: string[] = [];
 
   // Layer 1 — Presence

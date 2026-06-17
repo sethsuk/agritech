@@ -107,7 +107,9 @@ export async function POST(request: Request) {
       qr_value: qrValue,
       gps_lat: gpsLat,
       gps_long: gpsLong,
-      gps_delta_meters: validation.gpsDistanceMeters,
+      gps_delta_meters: validation.gpsDistanceMeters !== null
+        ? Math.min(validation.gpsDistanceMeters, 999999.99)
+        : null,
       form_data: formData,
       photo_required: tokenPayload.photoRequired,
       photo_requirement_reason: tokenPayload.photoRequirementReason,
