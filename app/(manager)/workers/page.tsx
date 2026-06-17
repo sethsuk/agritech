@@ -25,7 +25,42 @@ export default async function WorkersPage() {
     <div className="mx-auto max-w-4xl px-4 py-6">
       <h1 className="mb-6 text-2xl font-bold text-slate-900">คนงาน ({workers?.length ?? 0})</h1>
 
-      <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+      {/* Mobile: card list */}
+      <div className="space-y-3 sm:hidden">
+        {workers?.map((w) => {
+          const name = (w as { users?: { display_name?: string } }).users?.display_name ?? "—";
+          return (
+            <div key={w.worker_id} className="rounded-2xl bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-slate-900">{name}</p>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${tierColor[w.trust_tier] ?? ""}`}>
+                  {tierLabel[w.trust_tier] ?? w.trust_tier}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-slate-500">
+                โซน: {w.assigned_zones.join(", ") || "—"}
+              </p>
+              <div className="mt-2 flex gap-4 text-xs text-slate-400">
+                <span>บันทึก {w.reliability_logs_total}</span>
+                <span>แฟลก {(Number(w.reliability_flag_rate) * 100).toFixed(1)}%</span>
+                <span>
+                  {w.reliability_avg_completion_seconds > 0
+                    ? `เฉลี่ย ${Math.round(Number(w.reliability_avg_completion_seconds))}s`
+                    : "ยังไม่มีข้อมูล"}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+        {(!workers || workers.length === 0) && (
+          <div className="rounded-2xl bg-white p-8 text-center text-slate-400 shadow-sm">
+            ยังไม่มีคนงาน
+          </div>
+        )}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden overflow-hidden rounded-2xl bg-white shadow-sm sm:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
@@ -43,9 +78,7 @@ export default async function WorkersPage() {
                 <td className="px-4 py-3 font-medium text-slate-800">
                   {(w as { users?: { display_name?: string } }).users?.display_name ?? "—"}
                 </td>
-                <td className="px-4 py-3 text-slate-500">
-                  {w.assigned_zones.join(", ") || "—"}
-                </td>
+                <td className="px-4 py-3 text-slate-500">{w.assigned_zones.join(", ") || "—"}</td>
                 <td className="px-4 py-3 text-slate-500">{w.reliability_logs_total}</td>
                 <td className="px-4 py-3 text-slate-500">
                   {(Number(w.reliability_flag_rate) * 100).toFixed(1)}%
@@ -64,9 +97,7 @@ export default async function WorkersPage() {
             ))}
             {(!workers || workers.length === 0) && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
-                  ยังไม่มีคนงาน
-                </td>
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">ยังไม่มีคนงาน</td>
               </tr>
             )}
           </tbody>

@@ -33,7 +33,7 @@ export function TaskFormRenderer({ fields, formData, onChange }: Props) {
         const rawValue = formData[field.field_id];
 
         if (field.type === "numeric_counter" || field.type === "slider") {
-          const numValue = typeof rawValue === "number" ? rawValue : (field.min ?? 0);
+          const numValue = typeof rawValue === "number" ? rawValue : null;
           return (
             <FieldWrapper key={field.field_id} field={field}>
               <NumericCounter
@@ -43,12 +43,12 @@ export function TaskFormRenderer({ fields, formData, onChange }: Props) {
                 step={field.step}
                 onChange={(v) => onChange(field.field_id, v)}
               />
-              {field.warn_below !== undefined && numValue < field.warn_below && (
+              {field.warn_below !== undefined && numValue !== null && numValue < field.warn_below && (
                 <p className="mt-2 text-xs text-amber-600">
                   ⚠️ ค่าต่ำกว่าเกณฑ์ปกติ ({field.warn_below})
                 </p>
               )}
-              {field.warn_above !== undefined && numValue > field.warn_above && (
+              {field.warn_above !== undefined && numValue !== null && numValue > field.warn_above && (
                 <p className="mt-2 text-xs text-amber-600">
                   ⚠️ ค่าสูงกว่าเกณฑ์ปกติ ({field.warn_above})
                 </p>

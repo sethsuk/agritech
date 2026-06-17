@@ -47,7 +47,7 @@ npm run dev             # http://localhost:3000
 
 | Role | Email | Password | Notes |
 |:---|:---|:---|:---|
-| Manager | `manager@farm.local` | `ç` | Sees dashboard, alerts, workers, trees |
+| Manager | `manager@farm.local` | `master1234` | Sees dashboard, alerts, workers, trees |
 | Worker 1 | `worker1@farm.local` | `1111` | U Aung — zones North-A, North-B |
 | Worker 2 | `worker2@farm.local` | `2222` | Daw Khin — zone South-A |
 | Worker 3 | `worker3@farm.local` | `3333` | U Min — zone South-B |
@@ -93,18 +93,33 @@ ngrok http 3000
 
 ---
 
-## 6. QR codes for testing
+## 6. Seeded trees
 
-Each tree has a QR code value of `QR_<ID>_v1` (e.g. `QR_A001_v1` for tree `A-001`).
-The scan page also has a manual entry field — type a tree ID like `A-001` directly for desktop testing.
+600 trees across 4 zones, inserted by `npm run db:seed:trees`.
+
+| Zone | Prefix | Tree IDs | Count | QR code format |
+|:---|:---|:---|:---:|:---|
+| North-A | `NA` | `NA-001` → `NA-150` | 150 | `QR_NA001_v1` … `QR_NA150_v1` |
+| North-B | `NB` | `NB-001` → `NB-150` | 150 | `QR_NB001_v1` … `QR_NB150_v1` |
+| South-A | `SA` | `SA-001` → `SA-150` | 150 | `QR_SA001_v1` … `QR_SA150_v1` |
+| South-B | `SB` | `SB-001` → `SB-150` | 150 | `QR_SB001_v1` … `QR_SB150_v1` |
+
+Varieties randomly assigned: **Monthong**, **Chanee**, **Puangmanee**. All planted `2018-03-15`, status `active`.
+
+---
+
+## 7. QR codes for testing
+
+Each tree has a QR code value of `QR_<prefix><number>_v1` (e.g. `QR_NA001_v1` for tree `NA-001`).
+The scan page also has a manual entry field — type a tree ID like `NA-001` directly for desktop testing.
 
 Generate a printable QR:
 ```bash
-npx qrcode "QR_A001_v1" -o tree-a001.png
+npx qrcode "QR_NA001_v1" -o tree-na001.png
 ```
 
 ---
 
-## 7. Deploy to Vercel
+## 8. Deploy to Vercel
 
 Set the same env vars from `.env.local` in **Vercel → Project Settings → Environment Variables**, then connect the GitHub repo. Run `npm run db:migrate` once against production after first deploy.

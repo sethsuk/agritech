@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ManagerBottomNav } from "@/components/manager/ManagerBottomNav";
+import { LogoutButton } from "@/components/manager/LogoutButton";
 
 export default async function ManagerLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -34,7 +35,10 @@ export default async function ManagerLayout({ children }: { children: ReactNode 
             <Link href="/workers"   className="text-sm text-slate-600 hover:text-emerald-700">คนงาน</Link>
             <Link href="/trees"     className="text-sm text-slate-600 hover:text-emerald-700">ต้นทุเรียน</Link>
           </div>
-          <div className="ml-auto text-sm text-slate-500">{profile.display_name}</div>
+          <div className="ml-auto flex items-center gap-4">
+            <span className="text-sm text-slate-500">{profile.display_name}</span>
+            <LogoutButton />
+          </div>
         </div>
       </nav>
 
