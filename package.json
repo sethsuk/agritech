@@ -10,6 +10,7 @@
     "lint": "next lint",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed:trees": "tsx supabase/seed/02_trees.ts",
+    "setup:storage": "tsx scripts/setup-storage.ts",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset"
   },

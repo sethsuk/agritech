@@ -2,13 +2,12 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import imageCompression from "browser-image-compression";
 
 type Props = {
   photoUrl: string | null;
   onChange: (url: string | null) => void;
 };
-
-const MAX_MB = 10;
 
 export function PhotoCapture({ photoUrl, onChange }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -19,16 +18,20 @@ export function PhotoCapture({ photoUrl, onChange }: Props) {
     e.target.value = "";
     if (!file) return;
 
-    if (file.size > MAX_MB * 1024 * 1024) {
-      toast.error(`รูปใหญ่เกิน ${MAX_MB} MB`);
-      return;
-    }
-
     setUploading(true);
-    const toastId = toast.loading("กำลังอัปโหลดรูป…");
+    const toastId = toast.loading("กำลังบีบอัดรูป…");
     try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1280,
+        useWebWorker: true,
+        fileType: "image/jpeg",
+      });
+
+      toast.loading("กำลังอัปโหลดรูป…", { id: toastId });
+
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", compressed, "photo.jpg");
       const res = await fetch("/api/upload-photo", { method: "POST", body: fd });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
