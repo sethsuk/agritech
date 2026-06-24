@@ -126,9 +126,6 @@ export default function TaskFormPage() {
         return;
       }
 
-      sessionStorage.removeItem("qr_scanned_at");
-      sessionStorage.removeItem("qr_value");
-
       if (data.validationFlags?.length > 0) {
         toast.success("บันทึกแล้ว (มีข้อสังเกต)");
       } else {
