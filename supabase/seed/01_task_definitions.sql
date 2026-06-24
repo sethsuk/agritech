@@ -90,7 +90,7 @@ VALUES
  '[
    {"field_id":"ph","type":"numeric_counter","label_icon":"🧪",
     "label":{"th":"ค่า pH","my":"pH တန်ဖိုး","en":"pH"},
-    "required":true,"min":3.5,"max":8.0,"default_value":6.5,"warn_below":4.5,"warn_above":7.5,"step":0.1},
+    "required":true,"min":4.5,"max":7.5,"default_value":6.5,"step":0.1},
    {"field_id":"moisture_pct","type":"numeric_counter","label_icon":"💧",
     "label":{"th":"ความชื้น (%)","my":"စိုထိုင်းမှု (%)","en":"Moisture (%)"},
     "required":true,"min":0,"max":100,"warn_above":90,"step":1}

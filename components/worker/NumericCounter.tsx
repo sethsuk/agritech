@@ -69,7 +69,7 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
             const n = parseFloat(e.target.value);
             if (!isNaN(n) && n >= min && n <= max) onChange(stepped(n, 0, step));
           }}
-          className="h-14 w-28 rounded-2xl border border-slate-200 text-center text-2xl font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
+          className="h-14 w-28 rounded-2xl border border-slate-200 text-center text-2xl font-bold text-slate-900 focus:border-emerald-500 focus:outline-none [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
         />
       )}
 
