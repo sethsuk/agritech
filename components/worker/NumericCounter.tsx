@@ -4,6 +4,7 @@ type Props = {
   value: number | null;
   min?: number;
   max?: number;
+  default_value?: number;
   step?: number;
   onChange: (v: number) => void;
 };
@@ -14,24 +15,27 @@ function decimalPlaces(step: number): number {
   return dot === -1 ? 0 : s.length - dot - 1;
 }
 
-function rounded(val: number, step: number): number {
-  return parseFloat(val.toFixed(decimalPlaces(step)));
+// Integer-based step arithmetic avoids floating-point drift (e.g. 7.9 + 0.1 = 7.999…)
+function stepped(from: number, delta: number, step: number): number {
+  const factor = Math.pow(10, decimalPlaces(step));
+  return (Math.round(from * factor) + delta * Math.round(step * factor)) / factor;
 }
 
-export function NumericCounter({ value, min = 0, max = 9999, step = 1, onChange }: Props) {
+export function NumericCounter({ value, min = 0, max = 9999, default_value, step = 1, onChange }: Props) {
+  const initialValue = default_value !== undefined ? default_value : min;
+
   function decrement() {
     if (value === null) return;
-    const next = rounded(value - step, step);
+    const next = stepped(value, -1, step);
     if (next >= min) onChange(next);
   }
 
   function increment() {
     if (value === null) {
-      // first tap: land on min
-      onChange(min);
+      onChange(initialValue);
       return;
     }
-    const next = rounded(value + step, step);
+    const next = stepped(value, 1, step);
     if (next <= max) onChange(next);
   }
 
@@ -63,7 +67,7 @@ export function NumericCounter({ value, min = 0, max = 9999, step = 1, onChange 
           step={step}
           onChange={(e) => {
             const n = parseFloat(e.target.value);
-            if (!isNaN(n) && n >= min && n <= max) onChange(rounded(n, step));
+            if (!isNaN(n) && n >= min && n <= max) onChange(stepped(n, 0, step));
           }}
           className="h-14 w-28 rounded-2xl border border-slate-200 text-center text-2xl font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
         />

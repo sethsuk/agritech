@@ -39,6 +39,7 @@ export interface TaskField {
   required: boolean;
   min?: number;
   max?: number;
+  default_value?: number;
   warn_below?: number;
   warn_above?: number;
   step?: number;

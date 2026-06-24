@@ -40,6 +40,7 @@ export function TaskFormRenderer({ fields, formData, onChange }: Props) {
                 value={numValue}
                 min={field.min}
                 max={field.max}
+                default_value={field.default_value}
                 step={field.step}
                 onChange={(v) => onChange(field.field_id, v)}
               />
