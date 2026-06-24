@@ -135,7 +135,7 @@ export default function TaskFormPage() {
         toast.success("บันทึกข้อมูลเรียบร้อย ✓");
       }
 
-      router.push("/scan");
+      router.push(`/tree/${treeId}`);
     } catch {
       toast.error("บันทึกไม่สำเร็จ ลองอีกครั้ง");
     } finally {

@@ -127,6 +127,19 @@ export default function TreeDetailPage() {
           </button>
         ))}
       </div>
+
+      {/* Exit: go scan a different tree */}
+      <button
+        onClick={() => {
+          sessionStorage.removeItem("qr_scanned_at");
+          sessionStorage.removeItem("qr_value");
+          router.push("/scan");
+        }}
+        className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 text-sm font-medium text-slate-500 active:bg-slate-50"
+      >
+        <span>📷</span>
+        <span>ออกจากต้นนี้ · สแกนต้นใหม่</span>
+      </button>
       </main>
     </div>
   );
