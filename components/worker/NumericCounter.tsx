@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 type Props = {
   value: number | null;
   min?: number;
@@ -23,14 +25,18 @@ function stepped(from: number, delta: number, step: number): number {
 
 export function NumericCounter({ value, min = 0, max = 9999, default_value, step = 1, onChange }: Props) {
   const initialValue = default_value !== undefined ? default_value : min;
+  // draft holds the raw string while the user is mid-edit; null means "show parent value"
+  const [draft, setDraft] = useState<string | null>(null);
 
   function decrement() {
+    setDraft(null);
     if (value === null) return;
     const next = stepped(value, -1, step);
     if (next >= min) onChange(next);
   }
 
   function increment() {
+    setDraft(null);
     if (value === null) {
       onChange(initialValue);
       return;
@@ -38,6 +44,15 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
     const next = stepped(value, 1, step);
     if (next <= max) onChange(next);
   }
+
+  function commitDraft() {
+    if (draft === null) return;
+    const n = parseFloat(draft);
+    if (!isNaN(n) && n >= min && n <= max) onChange(stepped(n, 0, step));
+    setDraft(null);
+  }
+
+  const displayValue = draft !== null ? draft : value !== null ? String(value) : "";
 
   return (
     <div className="flex items-center gap-3">
@@ -50,7 +65,7 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
         −
       </button>
 
-      {value === null ? (
+      {value === null && draft === null ? (
         <button
           type="button"
           onClick={increment}
@@ -61,14 +76,12 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
       ) : (
         <input
           type="number"
-          value={value}
+          value={displayValue}
           min={min}
           max={max}
           step={step}
-          onChange={(e) => {
-            const n = parseFloat(e.target.value);
-            if (!isNaN(n) && n >= min && n <= max) onChange(stepped(n, 0, step));
-          }}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitDraft}
           className="h-14 w-28 rounded-2xl border border-slate-200 text-center text-2xl font-bold text-slate-900 focus:border-emerald-500 focus:outline-none [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
         />
       )}
