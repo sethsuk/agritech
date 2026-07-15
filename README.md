@@ -47,7 +47,7 @@ npm run dev             # http://localhost:3000
 
 | Role | Email | Password | Notes |
 |:---|:---|:---|:---|
-| Manager | `manager@farm.local` | `master1234` | Sees dashboard, alerts, workers, trees |
+| Manager | `manager@farm.local` | `manager1234` | Sees dashboard, alerts, workers, trees |
 | Worker 1 | `worker1@farm.local` | `1111` | U Aung — zones North-A, North-B |
 | Worker 2 | `worker2@farm.local` | `2222` | Daw Khin — zone South-A |
 | Worker 3 | `worker3@farm.local` | `3333` | U Min — zone South-B |
