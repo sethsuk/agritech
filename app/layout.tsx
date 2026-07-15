@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
 import { Toaster } from "sonner";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import "./globals.css";
 
 const notoThai = Noto_Sans_Thai({
@@ -26,8 +27,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="th" className={notoThai.variable}>
       <body className="min-h-dvh">
-        {children}
-        <Toaster position="top-center" richColors closeButton duration={3000} />
+        <LanguageProvider>
+          {children}
+          <Toaster position="top-center" richColors closeButton duration={3000} />
+        </LanguageProvider>
       </body>
     </html>
   );

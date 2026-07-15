@@ -5,12 +5,18 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { QrScanner } from "@/components/worker/QrScanner";
 import { WorkerHeader } from "@/components/worker/WorkerHeader";
+import { useLang } from "@/lib/i18n/LanguageContext";
+import { t } from "@/lib/i18n/t";
+import { dict } from "@/lib/i18n/dictionary";
 
 export default function ScanPage() {
   const router = useRouter();
+  const { lang } = useLang();
   const [manualId, setManualId] = useState("");
   const [checking, setChecking] = useState(false);
   const [scanned, setScanned] = useState(false);
+
+  const tr = (key: keyof typeof dict) => t(dict[key], lang);
 
   const navigateToTree = useCallback(
     async (qrValue: string, scannedAt: string) => {
@@ -20,7 +26,7 @@ export default function ScanPage() {
       try {
         const res = await fetch(`/api/trees/${encodeURIComponent(qrValue)}`);
         if (!res.ok) {
-          toast.error("ไม่พบต้นไม้รหัสนี้");
+          toast.error(tr("scanNotFound"));
           setChecking(false);
           return;
         }
@@ -30,11 +36,11 @@ export default function ScanPage() {
         sessionStorage.setItem("qr_value", qrValue);
         router.push(`/tree/${tree.tree_id}`);
       } catch {
-        toast.error("เกิดข้อผิดพลาด ลองอีกครั้ง");
+        toast.error(tr("scanError"));
         setChecking(false);
       }
     },
-    [router, checking, scanned],
+    [router, checking, scanned, lang], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const handleQrDecode = useCallback(
@@ -56,22 +62,22 @@ export default function ScanPage() {
       <WorkerHeader variant="home" />
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-6">
-        <p className="mb-4 text-sm text-slate-500">สแกน QR code ที่ต้นทุเรียน</p>
+        <p className="mb-4 text-sm text-slate-500">{tr("scanPrompt")}</p>
         <div className="flex-1 space-y-4">
         <QrScanner
           onDecode={handleQrDecode}
-          onUnavailable={() => toast.info("ไม่สามารถเข้าถึงกล้อง ใช้การพิมพ์รหัสแทน")}
+          onUnavailable={() => toast.info(tr("cameraUnavailableToast"))}
         />
 
         {checking && (
           <div className="rounded-2xl bg-emerald-50 p-4 text-center text-sm text-emerald-700">
-            กำลังค้นหาต้นไม้...
+            {tr("scanning")}
           </div>
         )}
 
         <div className="relative flex items-center py-2">
           <div className="flex-1 border-t border-slate-200" />
-          <span className="mx-3 text-xs text-slate-400">หรือพิมพ์รหัสต้นไม้</span>
+          <span className="mx-3 text-xs text-slate-400">{tr("scanOr")}</span>
           <div className="flex-1 border-t border-slate-200" />
         </div>
 
@@ -88,7 +94,7 @@ export default function ScanPage() {
             disabled={!manualId.trim() || checking}
             className="h-12 rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white disabled:bg-slate-300"
           >
-            ค้นหา
+            {tr("scanSearch")}
           </button>
         </form>
         </div>

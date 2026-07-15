@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLang } from "@/lib/i18n/LanguageContext";
+import { t } from "@/lib/i18n/t";
+import { dict } from "@/lib/i18n/dictionary";
 
 type Props = {
   onDecode: (text: string) => void;
@@ -10,6 +13,7 @@ type Props = {
 const REGION_ID = "qr-scanner-region";
 
 export function QrScanner({ onDecode, onUnavailable }: Props) {
+  const { lang } = useLang();
   const [status, setStatus] = useState<"loading" | "ready" | "unavailable">("loading");
   const startedRef = useRef(false);
   const onDecodeRef = useRef(onDecode);
@@ -65,8 +69,8 @@ export function QrScanner({ onDecode, onUnavailable }: Props) {
     return (
       <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 p-6 text-center">
         <div className="text-3xl">📷</div>
-        <p className="mt-2 font-medium text-amber-900">ไม่สามารถเข้าถึงกล้อง</p>
-        <p className="mt-1 text-sm text-amber-800">กรุณาใช้ช่องพิมพ์รหัสด้านล่างแทน</p>
+        <p className="mt-2 font-medium text-amber-900">{t(dict.cameraUnavailableTitle, lang)}</p>
+        <p className="mt-1 text-sm text-amber-800">{t(dict.cameraUnavailableHint, lang)}</p>
       </div>
     );
   }
@@ -75,7 +79,7 @@ export function QrScanner({ onDecode, onUnavailable }: Props) {
     <div className="overflow-hidden rounded-2xl bg-black">
       <div id={REGION_ID} className="aspect-square w-full" />
       {status === "loading" && (
-        <div className="bg-black p-4 text-center text-sm text-white/70">กำลังเปิดกล้อง...</div>
+        <div className="bg-black p-4 text-center text-sm text-white/70">{t(dict.cameraLoading, lang)}</div>
       )}
     </div>
   );

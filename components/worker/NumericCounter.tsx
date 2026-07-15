@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { t } from "@/lib/i18n/t";
+import { useLang } from "@/lib/i18n/LanguageContext";
+import { dict } from "@/lib/i18n/dictionary";
 
 type Props = {
   value: number | null;
@@ -24,6 +27,7 @@ function stepped(from: number, delta: number, step: number): number {
 }
 
 export function NumericCounter({ value, min = 0, max = 9999, default_value, step = 1, onChange }: Props) {
+  const { lang } = useLang();
   const initialValue = default_value !== undefined ? default_value : min;
   // draft holds the raw string while the user is mid-edit; null means "show parent value"
   const [draft, setDraft] = useState<string | null>(null);
@@ -71,7 +75,7 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
           onClick={increment}
           className="h-14 w-28 rounded-2xl border-2 border-dashed border-slate-300 text-center text-sm text-slate-400"
         >
-          แตะเพื่อตั้งค่า
+{t(dict.numericTapToSet, lang)}
         </button>
       ) : (
         <input

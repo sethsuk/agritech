@@ -13,9 +13,9 @@ const supabase = createClient(
 
 const ACCOUNTS = [
   { email: "manager@farm.local", password: "manager1234", role: "manager", display_name: "K. Nong" },
-  { email: "worker1@farm.local", password: "1111", role: "worker", display_name: "U Aung",  zones: ["North-A", "North-B"] },
-  { email: "worker2@farm.local", password: "2222", role: "worker", display_name: "Daw Khin", zones: ["South-A"] },
-  { email: "worker3@farm.local", password: "3333", role: "worker", display_name: "U Min",   zones: ["South-B"] },
+  { email: "worker1@farm.local", password: "1111", role: "worker", display_name: "U Aung",  zones: ["A"] },
+  { email: "worker2@farm.local", password: "2222", role: "worker", display_name: "Daw Khin", zones: ["A"] },
+  { email: "worker3@farm.local", password: "3333", role: "worker", display_name: "U Min",   zones: ["A"] },
 ];
 
 async function run() {

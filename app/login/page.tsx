@@ -4,12 +4,19 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { useLang } from "@/lib/i18n/LanguageContext";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { t } from "@/lib/i18n/t";
+import { dict } from "@/lib/i18n/dictionary";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { lang } = useLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const tr = (key: keyof typeof dict) => t(dict[key], lang);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +27,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      toast.error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+      toast.error(tr("loginError"));
       setLoading(false);
       return;
     }
@@ -32,16 +39,20 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-emerald-50 px-4">
       <div className="w-full max-w-sm">
+        <div className="mb-4 flex justify-center">
+          <LanguageToggle />
+        </div>
+
         <div className="mb-8 text-center">
           <div className="mb-3 text-6xl">🌳</div>
-          <h1 className="text-2xl font-bold text-slate-900">ระบบสวนทุเรียน</h1>
-          <p className="mt-1 text-sm text-slate-500">กรุณาลงชื่อเข้าใช้</p>
+          <h1 className="text-2xl font-bold text-slate-900">{tr("loginTitle")}</h1>
+          <p className="mt-1 text-sm text-slate-500">{tr("loginSubtitle")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl bg-white p-6 shadow-sm">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
-              อีเมล
+              {tr("emailLabel")}
             </label>
             <input
               type="email"
@@ -56,7 +67,7 @@ export default function LoginPage() {
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
-              รหัสผ่าน / PIN
+              {tr("passwordLabel")}
             </label>
             <input
               type="password"
@@ -74,7 +85,7 @@ export default function LoginPage() {
             disabled={loading || !email || !password}
             className="h-12 w-full rounded-xl bg-emerald-600 text-base font-semibold text-white transition active:bg-emerald-700 disabled:bg-slate-300"
           >
-            {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+            {loading ? tr("loginLoading") : tr("loginButton")}
           </button>
         </form>
       </div>

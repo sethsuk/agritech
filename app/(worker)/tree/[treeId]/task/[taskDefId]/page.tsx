@@ -7,6 +7,8 @@ import { t } from "@/lib/i18n/t";
 import { WorkerHeader } from "@/components/worker/WorkerHeader";
 import { TaskFormRenderer } from "@/components/worker/TaskFormRenderer";
 import { PhotoCapture } from "@/components/worker/PhotoCapture";
+import { useLang } from "@/lib/i18n/LanguageContext";
+import { dict } from "@/lib/i18n/dictionary";
 import type { DbTaskDefinition, DbTree } from "@/types/database";
 
 interface StartLogResponse {
@@ -19,6 +21,7 @@ interface StartLogResponse {
 export default function TaskFormPage() {
   const { treeId, taskDefId } = useParams<{ treeId: string; taskDefId: string }>();
   const router = useRouter();
+  const { lang } = useLang();
 
   const [tree, setTree] = useState<DbTree | null>(null);
   const [taskDef, setTaskDef] = useState<DbTaskDefinition | null>(null);
@@ -29,6 +32,8 @@ export default function TaskFormPage() {
   const [loading, setLoading] = useState(true);
 
   const gpsRef = useRef<{ lat: number; long: number } | null>(null);
+
+  const tr = (key: keyof typeof dict) => t(dict[key], lang);
 
   // Capture GPS on mount
   useEffect(() => {
@@ -67,15 +72,15 @@ export default function TaskFormPage() {
       })
       .catch((err) => {
         console.error(err);
-        toast.error("โหลดฟอร์มไม่สำเร็จ");
+        toast.error(tr("formLoadError"));
         router.back();
       })
       .finally(() => setLoading(false));
-  }, [treeId, taskDefId, router]);
+  }, [treeId, taskDefId, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleBack() {
     const hasInput = Object.keys(formData).length > 0 || photoUrl !== null;
-    if (hasInput && !window.confirm("ออกจากฟอร์มนี้? ข้อมูลที่กรอกไว้จะหายไป")) return;
+    if (hasInput && !window.confirm(tr("exitFormConfirm"))) return;
     router.back();
   }
 
@@ -84,14 +89,14 @@ export default function TaskFormPage() {
     if (!startLog || !taskDef) return;
 
     if (startLog.photoRequired && !photoUrl) {
-      toast.error("กรุณาถ่ายรูปก่อนบันทึก");
+      toast.error(tr("photoRequiredError"));
       return;
     }
 
     // Validate required fields
     for (const field of taskDef.fields) {
       if (field.required && (formData[field.field_id] === undefined || formData[field.field_id] === "")) {
-        toast.error(`กรุณากรอก: ${t(field.label)}`);
+        toast.error(`${tr("fieldRequiredError")}: ${t(field.label, lang)}`);
         return;
       }
     }
@@ -119,22 +124,22 @@ export default function TaskFormPage() {
       const data = await res.json();
       if (!res.ok) {
         if (data.error === "submission_rejected") {
-          toast.error(`ข้อมูลไม่ถูกต้อง: ${data.detail}`);
+          toast.error(`${tr("submissionRejected")}: ${data.detail}`);
         } else {
-          toast.error("บันทึกไม่สำเร็จ ลองอีกครั้ง");
+          toast.error(tr("submitError"));
         }
         return;
       }
 
       if (data.validationFlags?.length > 0) {
-        toast.success("บันทึกแล้ว (มีข้อสังเกต)");
+        toast.success(tr("submitFlagged"));
       } else {
-        toast.success("บันทึกข้อมูลเรียบร้อย ✓");
+        toast.success(tr("submitSuccess"));
       }
 
       router.push(`/tree/${treeId}`);
     } catch {
-      toast.error("บันทึกไม่สำเร็จ ลองอีกครั้ง");
+      toast.error(tr("submitError"));
     } finally {
       setSubmitting(false);
     }
@@ -158,7 +163,7 @@ export default function TaskFormPage() {
     <div className="flex min-h-dvh flex-col">
       <WorkerHeader
         variant="back"
-        title={t(taskDef.display_name)}
+        title={t(taskDef.display_name, lang)}
         onBack={handleBack}
       />
 
@@ -166,7 +171,7 @@ export default function TaskFormPage() {
       {/* Tree context */}
       <p className="mb-4 flex items-center gap-2 text-sm text-slate-500">
         <span className="text-xl">{taskDef.display_name.icon ?? "📋"}</span>
-        {tree.tree_id} · {tree.zone} · {tree.variety}
+        {tree.tree_id} · {tree.zone}{tree.side} · {tree.variety}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -183,8 +188,8 @@ export default function TaskFormPage() {
           <div className="rounded-2xl bg-amber-50 p-4">
             <p className="mb-3 text-sm font-medium text-amber-800">
               📸 {startLog.photoRequirementReason === "random_audit"
-                ? "งานนี้ถูกสุ่มตรวจ — ต้องถ่ายรูป"
-                : "งานนี้ต้องถ่ายรูป"}
+                ? tr("photoAuditNotice")
+                : tr("photoRequiredNotice")}
             </p>
             <PhotoCapture
               photoUrl={photoUrl}
@@ -201,7 +206,7 @@ export default function TaskFormPage() {
               disabled={submitting}
               className="h-14 w-full rounded-2xl bg-emerald-600 text-lg font-semibold text-white transition active:bg-emerald-700 disabled:bg-slate-300"
             >
-              {submitting ? "กำลังบันทึก..." : "บันทึก"}
+              {submitting ? tr("submitting") : tr("submitButton")}
             </button>
           </div>
         </div>

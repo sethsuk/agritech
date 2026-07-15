@@ -2,6 +2,7 @@
 
 import type { TaskFieldOption } from "@/types/database";
 import { t } from "@/lib/i18n/t";
+import { useLang } from "@/lib/i18n/LanguageContext";
 
 type Props = {
   options: TaskFieldOption[];
@@ -17,6 +18,7 @@ const severityColor: Record<string, string> = {
 };
 
 export function SeverityPicker({ options, value, onChange }: Props) {
+  const { lang } = useLang();
   return (
     <div className="grid grid-cols-2 gap-3">
       {options.map((opt) => (
@@ -31,7 +33,7 @@ export function SeverityPicker({ options, value, onChange }: Props) {
           }`}
         >
           <span className="text-3xl">{opt.icon}</span>
-          <span className="text-sm font-medium">{t(opt.label)}</span>
+          <span className="text-sm font-medium">{t(opt.label, lang)}</span>
         </button>
       ))}
     </div>

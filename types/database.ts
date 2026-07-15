@@ -96,6 +96,7 @@ export interface DbTree {
   lat: number;
   long: number;
   zone: string;
+  side: "L" | "R";
   row_num: number;
   position: number;
   planted_date: string;

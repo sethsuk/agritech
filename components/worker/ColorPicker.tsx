@@ -2,6 +2,7 @@
 
 import type { TaskFieldOption } from "@/types/database";
 import { t } from "@/lib/i18n/t";
+import { useLang } from "@/lib/i18n/LanguageContext";
 
 type Props = {
   options: TaskFieldOption[];
@@ -24,6 +25,7 @@ const colorBg: Record<string, string> = {
 };
 
 export function ColorPicker({ options, value, onChange }: Props) {
+  const { lang } = useLang();
   return (
     <div className="flex gap-4">
       {options.map((opt) => (
@@ -42,7 +44,7 @@ export function ColorPicker({ options, value, onChange }: Props) {
               opt.value === "white" ? "border border-slate-300" : ""
             }`}
           />
-          <span className="text-xs font-medium text-slate-700">{opt.icon} {t(opt.label)}</span>
+          <span className="text-xs font-medium text-slate-700">{opt.icon} {t(opt.label, lang)}</span>
         </button>
       ))}
     </div>

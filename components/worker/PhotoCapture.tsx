@@ -3,6 +3,9 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import imageCompression from "browser-image-compression";
+import { t } from "@/lib/i18n/t";
+import { useLang } from "@/lib/i18n/LanguageContext";
+import { dict } from "@/lib/i18n/dictionary";
 
 type Props = {
   photoUrl: string | null;
@@ -10,6 +13,7 @@ type Props = {
 };
 
 export function PhotoCapture({ photoUrl, onChange }: Props) {
+  const { lang } = useLang();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -19,7 +23,7 @@ export function PhotoCapture({ photoUrl, onChange }: Props) {
     if (!file) return;
 
     setUploading(true);
-    const toastId = toast.loading("กำลังบีบอัดรูป…");
+    const toastId = toast.loading(t(dict.photoCompressing, lang));
     try {
       const compressed = await imageCompression(file, {
         maxSizeMB: 1,
@@ -28,20 +32,20 @@ export function PhotoCapture({ photoUrl, onChange }: Props) {
         fileType: "image/jpeg",
       });
 
-      toast.loading("กำลังอัปโหลดรูป…", { id: toastId });
+      toast.loading(t(dict.photoUploadingToast, lang), { id: toastId });
 
       const fd = new FormData();
       fd.append("file", compressed, "photo.jpg");
       const res = await fetch("/api/upload-photo", { method: "POST", body: fd });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "อัปโหลดไม่สำเร็จ");
+        throw new Error(data.error ?? t(dict.photoUploadFailed, lang));
       }
       const { url } = await res.json() as { url: string };
       onChange(url);
-      toast.success("อัปโหลดสำเร็จ", { id: toastId });
+      toast.success(t(dict.photoUploadSuccess, lang), { id: toastId });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "อัปโหลดไม่สำเร็จ";
+      const msg = err instanceof Error ? err.message : t(dict.photoUploadFailed, lang);
       toast.error(msg, { id: toastId });
     } finally {
       setUploading(false);
@@ -52,7 +56,7 @@ export function PhotoCapture({ photoUrl, onChange }: Props) {
     return (
       <div className="relative overflow-hidden rounded-2xl bg-slate-100">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photoUrl} alt="รูปที่ถ่าย" className="h-48 w-full object-cover" />
+        <img src={photoUrl} alt={t(dict.photoAlt, lang)} className="h-48 w-full object-cover" />
         <button
           type="button"
           onClick={() => onChange(null)}
@@ -80,7 +84,7 @@ export function PhotoCapture({ photoUrl, onChange }: Props) {
         disabled={uploading}
         className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-amber-400 bg-white text-base font-medium text-amber-800 active:bg-amber-50 disabled:opacity-50"
       >
-        {uploading ? "กำลังอัปโหลด..." : "📸 ถ่ายรูป"}
+        {uploading ? t(dict.photoUploading, lang) : t(dict.photoTake, lang)}
       </button>
     </>
   );

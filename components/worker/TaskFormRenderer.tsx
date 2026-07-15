@@ -1,6 +1,8 @@
 "use client";
 
-import { t } from "@/lib/i18n/t";
+import { t, type Lang } from "@/lib/i18n/t";
+import { useLang } from "@/lib/i18n/LanguageContext";
+import { dict } from "@/lib/i18n/dictionary";
 import type { TaskField } from "@/types/database";
 import { NumericCounter } from "./NumericCounter";
 import { ColorPicker } from "./ColorPicker";
@@ -13,12 +15,12 @@ type Props = {
   onChange: (fieldId: string, value: unknown) => void;
 };
 
-function FieldWrapper({ field, children }: { field: TaskField; children: React.ReactNode }) {
+function FieldWrapper({ field, lang, children }: { field: TaskField; lang: Lang; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl bg-white p-4 shadow-sm">
       <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
         <span>{field.label_icon}</span>
-        <span>{t(field.label)}</span>
+        <span>{t(field.label, lang)}</span>
         {field.required && <span className="text-red-400">*</span>}
       </label>
       {children}
@@ -27,6 +29,8 @@ function FieldWrapper({ field, children }: { field: TaskField; children: React.R
 }
 
 export function TaskFormRenderer({ fields, formData, onChange }: Props) {
+  const { lang } = useLang();
+
   return (
     <div className="space-y-4">
       {fields.map((field) => {
@@ -35,7 +39,7 @@ export function TaskFormRenderer({ fields, formData, onChange }: Props) {
         if (field.type === "numeric_counter" || field.type === "slider") {
           const numValue = typeof rawValue === "number" ? rawValue : null;
           return (
-            <FieldWrapper key={field.field_id} field={field}>
+            <FieldWrapper key={field.field_id} field={field} lang={lang}>
               <NumericCounter
                 value={numValue}
                 min={field.min}
@@ -46,12 +50,12 @@ export function TaskFormRenderer({ fields, formData, onChange }: Props) {
               />
               {field.warn_below !== undefined && numValue !== null && numValue < field.warn_below && (
                 <p className="mt-2 text-xs text-amber-600">
-                  ⚠️ ค่าต่ำกว่าเกณฑ์ปกติ ({field.warn_below})
+                  ⚠️ {t(dict.warnBelow, lang)} ({field.warn_below})
                 </p>
               )}
               {field.warn_above !== undefined && numValue !== null && numValue > field.warn_above && (
                 <p className="mt-2 text-xs text-amber-600">
-                  ⚠️ ค่าสูงกว่าเกณฑ์ปกติ ({field.warn_above})
+                  ⚠️ {t(dict.warnAbove, lang)} ({field.warn_above})
                 </p>
               )}
             </FieldWrapper>
@@ -61,7 +65,7 @@ export function TaskFormRenderer({ fields, formData, onChange }: Props) {
         if (field.type === "color_picker") {
           const strValue = typeof rawValue === "string" ? rawValue : null;
           return (
-            <FieldWrapper key={field.field_id} field={field}>
+            <FieldWrapper key={field.field_id} field={field} lang={lang}>
               <ColorPicker
                 options={field.options ?? []}
                 value={strValue}
@@ -74,7 +78,7 @@ export function TaskFormRenderer({ fields, formData, onChange }: Props) {
         if (field.type === "severity_picker") {
           const strValue = typeof rawValue === "string" ? rawValue : null;
           return (
-            <FieldWrapper key={field.field_id} field={field}>
+            <FieldWrapper key={field.field_id} field={field} lang={lang}>
               <SeverityPicker
                 options={field.options ?? []}
                 value={strValue}
@@ -87,7 +91,7 @@ export function TaskFormRenderer({ fields, formData, onChange }: Props) {
         if (field.type === "dropdown") {
           const strValue = typeof rawValue === "string" ? rawValue : null;
           return (
-            <FieldWrapper key={field.field_id} field={field}>
+            <FieldWrapper key={field.field_id} field={field} lang={lang}>
               <IconDropdown
                 options={field.options ?? []}
                 value={strValue}
