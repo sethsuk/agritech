@@ -202,3 +202,48 @@ export interface DbAssignment {
   created_at: string;
   updated_at: string;
 }
+
+export interface DbProtocol {
+  protocol_id: string;
+  alert_subtype: string;
+  response_task_def_id: string;
+  description: { th: string; en: string };
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Supabase client generic, hand-built from the Row interfaces above rather than
+// `supabase gen types typescript` (that needs Docker running locally — see the
+// comment at the top of this file). Insert/Update are intentionally loose
+// (Partial<Row>) rather than precisely matching DB defaults/nullability; regenerate
+// this properly with the Supabase CLI once Docker is available.
+//
+// Flatten forces `interface` types into plain object types — without it, postgrest-js's
+// conditional query-result types fail to pattern-match against named interfaces and
+// silently resolve every query result to `never`.
+type Flatten<T> = { [K in keyof T]: T[K] };
+type Table<Row> = {
+  Row: Flatten<Row>;
+  Insert: Flatten<Partial<Row>>;
+  Update: Flatten<Partial<Row>>;
+  Relationships: [];
+};
+
+export interface Database {
+  public: {
+    Tables: {
+      users: Table<DbUser>;
+      workers: Table<DbWorker>;
+      trees: Table<DbTree>;
+      task_definitions: Table<DbTaskDefinition>;
+      task_logs: Table<DbTaskLog>;
+      sets: Table<DbSet>;
+      alerts: Table<DbAlert>;
+      assignments: Table<DbAssignment>;
+      protocols: Table<DbProtocol>;
+    };
+    Views: { [_ in never]: never };
+    Functions: { [_ in never]: never };
+  };
+}

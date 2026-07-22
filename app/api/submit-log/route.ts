@@ -4,7 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyToken } from "@/lib/logToken";
 import { validate } from "@/lib/validation";
-import type { DbTree, DbTaskDefinition } from "@/types/database";
+import type { DbTree, DbTaskDefinition, GenerationColor } from "@/types/database";
+
+const GENERATION_COLORS: readonly GenerationColor[] = ["red", "blue", "yellow", "white"];
+function isGenerationColor(v: string): v is GenerationColor {
+  return (GENERATION_COLORS as readonly string[]).includes(v);
+}
 
 const BodySchema = z.object({
   logToken: z.string(),
@@ -12,7 +17,7 @@ const BodySchema = z.object({
   qrScannedAt: z.string().datetime(),
   gpsLat: z.number().nullable(),
   gpsLong: z.number().nullable(),
-  formData: z.record(z.unknown()),
+  formData: z.record(z.string(), z.unknown()),
   photoUrl: z.string().url().nullable().optional(),
   notesText: z.string().nullable().optional(),
 });
@@ -150,10 +155,12 @@ async function handleSideEffects({
   userId: string;
 }) {
   const now = new Date();
+  const rawColor = String(formData.color ?? "");
+  const rawSetColor = String(formData.set_color ?? "");
 
   // Bloom log → create a set
-  if (taskDef.task_type === "bloom_log") {
-    const color = String(formData.color ?? "");
+  if (taskDef.task_type === "bloom_log" && isGenerationColor(rawColor)) {
+    const color = rawColor;
     const flowerCount = Number(formData.flower_count ?? 0);
     const bloomDate = now.toISOString().slice(0, 10);
     const matDays = 120;
@@ -175,13 +182,13 @@ async function handleSideEffects({
       initial_fruit_count: flowerCount,
       current_fruit_count: flowerCount,
       status: "flowering",
-      history: JSON.stringify([{ date: bloomDate, event: "bloom", fruit_count: flowerCount, log_id: logId }]),
+      history: [{ date: bloomDate, event: "bloom", fruit_count: flowerCount, log_id: logId }],
     }, { onConflict: "set_id" });
   }
 
   // Harvest log → update set status
-  if (taskDef.task_type === "harvest") {
-    const color = String(formData.set_color ?? "");
+  if (taskDef.task_type === "harvest" && isGenerationColor(rawSetColor)) {
+    const color = rawSetColor;
     const season = `${now.getFullYear()}-main`;
     const setId = `set_${tree.tree_id.toLowerCase().replace(/-/g, "")}_${season}_${color}`;
 

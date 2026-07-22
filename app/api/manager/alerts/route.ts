@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { AlertStatus } from "@/types/database";
 
 // GET /api/manager/alerts — paginated open alerts, newest first.
 // PATCH /api/manager/alerts — update alert status.
+
+const ALERT_STATUSES: readonly AlertStatus[] = ["open", "reviewed", "resolved", "dismissed"];
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -13,7 +16,10 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient();
   const { searchParams } = new URL(request.url);
-  const status = searchParams.get("status") ?? "open";
+  const statusParam = searchParams.get("status");
+  const status: AlertStatus = ALERT_STATUSES.includes(statusParam as AlertStatus)
+    ? (statusParam as AlertStatus)
+    : "open";
 
   const { data, error } = await admin
     .from("alerts")
@@ -49,7 +55,7 @@ export async function PATCH(request: Request) {
     .from("alerts")
     .update({
       status,
-      resolution: { resolved_by: user.id, resolved_at: new Date().toISOString(), notes: notes ?? "" },
+      resolution: { action_taken: status, resolved_by: user.id, resolved_at: new Date().toISOString(), notes: notes ?? "" },
     })
     .eq("alert_id", alertId);
 

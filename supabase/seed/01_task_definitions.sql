@@ -123,4 +123,15 @@ VALUES
       {"value":"reject","icon":"❌","label":{"th":"ไม่ผ่าน","my":"ပယ်ဖျက်","en":"Reject"}}
     ]}
  ]'
-);
+)
+-- Upsert so re-seeding applies field/definition edits instead of being skipped as a
+-- duplicate. Without this, migrate.ts silently skips existing rows and DB stays stale.
+ON CONFLICT (task_def_id) DO UPDATE SET
+  task_type                = EXCLUDED.task_type,
+  display_name             = EXCLUDED.display_name,
+  photo_policy_mode        = EXCLUDED.photo_policy_mode,
+  photo_policy_audit_rates = EXCLUDED.photo_policy_audit_rates,
+  requires_qr_scan         = EXCLUDED.requires_qr_scan,
+  min_completion_seconds   = EXCLUDED.min_completion_seconds,
+  min_qr_to_submit_seconds = EXCLUDED.min_qr_to_submit_seconds,
+  fields                   = EXCLUDED.fields;

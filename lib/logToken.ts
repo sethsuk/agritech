@@ -8,13 +8,14 @@
  * Token format: base64(payload) + "." + base64(HMAC-SHA256)
  */
 import { createHmac } from "crypto";
+import type { PhotoRequirementReason } from "@/types/database";
 
 export interface LogTokenPayload {
   workerId: string;
   treeId: string;
   taskDefId: string;
   photoRequired: boolean;
-  photoRequirementReason: string;
+  photoRequirementReason: PhotoRequirementReason;
   auditSeed: string;
   formOpenedAt: string; // ISO timestamp (server-side)
   expiresAt: string;    // ISO timestamp
