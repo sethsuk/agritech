@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/next";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import "./globals.css";
 
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Toaster position="top-center" richColors closeButton duration={3000} />
         </LanguageProvider>
+        <Analytics />
       </body>
     </html>
   );
