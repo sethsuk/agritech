@@ -3,6 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { t } from "@/lib/i18n/t";
+import { useLang } from "@/lib/i18n/LanguageContext";
+import { dict, type DictKey } from "@/lib/i18n/dictionary";
 
 const LANGUAGES: { value: "my" | "th" | "en"; label: string }[] = [
   { value: "my", label: "မြန်မာ" },
@@ -17,6 +20,7 @@ interface CreatedWorker {
 }
 
 export default function NewWorkerPage() {
+  const { lang } = useLang();
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -25,6 +29,8 @@ export default function NewWorkerPage() {
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<CreatedWorker | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const tr = (key: DictKey) => t(dict[key], lang);
 
   const usernameTrimmed = username.trim().toLowerCase();
   const usernameValid = usernameTrimmed.length === 0 || /^[a-z0-9._-]+$/.test(usernameTrimmed);
@@ -56,13 +62,13 @@ export default function NewWorkerPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.detail ?? "สร้างบัญชีไม่สำเร็จ");
+        toast.error(data.detail ?? tr("createAccountFailedToast"));
         return;
       }
-      toast.success("สร้างบัญชีคนงานเรียบร้อย ✓");
+      toast.success(tr("workerCreatedToast"));
       setCreated({ displayName: data.worker.displayName, email: data.worker.email, password: data.worker.password });
     } catch {
-      toast.error("เกิดข้อผิดพลาด ลองอีกครั้ง");
+      toast.error(tr("scanError"));
     } finally {
       setSubmitting(false);
     }
@@ -84,10 +90,10 @@ export default function NewWorkerPage() {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      toast.success("คัดลอกแล้ว");
+      toast.success(tr("copiedToast"));
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("คัดลอกไม่สำเร็จ");
+      toast.error(tr("copyFailedToast"));
     }
   }
 
@@ -96,28 +102,28 @@ export default function NewWorkerPage() {
       <div className="mx-auto max-w-md px-4 py-6">
         <div className="rounded-2xl bg-white p-6 text-center shadow-sm">
           <div className="mb-3 text-5xl">✅</div>
-          <h1 className="text-xl font-bold text-slate-900">สร้างบัญชีแล้ว</h1>
+          <h1 className="text-xl font-bold text-slate-900">{tr("accountCreatedTitle")}</h1>
           <p className="mt-1 text-slate-700">{created.displayName}</p>
 
           <div className="mt-4 space-y-2 rounded-xl bg-slate-50 p-4 text-left">
             <div>
-              <p className="text-xs text-slate-400">อีเมลเข้าสู่ระบบ</p>
+              <p className="text-xs text-slate-400">{tr("loginEmailLabel")}</p>
               <p className="font-mono text-sm text-slate-800">{created.email}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">รหัสผ่าน</p>
+              <p className="text-xs text-slate-400">{tr("passwordFieldLabel")}</p>
               <p className="font-mono text-sm text-slate-800">{created.password}</p>
             </div>
           </div>
           <p className="mt-2 text-xs text-slate-400">
-            จดหรือบอกข้อมูลนี้ให้คนงานโดยตรง — ระบบจะไม่แสดงรหัสผ่านอีก
+            {tr("credentialsWarningHint")}
           </p>
 
           <button
             onClick={copyCredentials}
             className="mt-6 h-12 w-full rounded-xl bg-emerald-600 text-sm font-semibold text-white active:bg-emerald-700"
           >
-            {copied ? "✓ คัดลอกแล้ว" : "📋 คัดลอกข้อมูลเข้าสู่ระบบ"}
+            {copied ? tr("copiedButton") : tr("copyCredentialsButton")}
           </button>
 
           <div className="mt-3 flex gap-2">
@@ -125,13 +131,13 @@ export default function NewWorkerPage() {
               onClick={resetForm}
               className="h-12 flex-1 rounded-xl bg-slate-100 text-sm font-medium text-slate-600 active:bg-slate-200"
             >
-              เพิ่มคนงานอีกคน
+              {tr("addAnotherWorker")}
             </button>
             <Link
               href="/workers"
               className="flex h-12 flex-1 items-center justify-center rounded-xl bg-slate-100 text-sm font-medium text-slate-600 active:bg-slate-200"
             >
-              ไปที่รายชื่อคนงาน
+              {tr("goToWorkersList")}
             </Link>
           </div>
         </div>
@@ -142,13 +148,13 @@ export default function NewWorkerPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-6">
       <div className="mb-4 flex items-center gap-2">
-        <Link href="/workers" className="text-sm text-slate-400">‹ กลับ</Link>
+        <Link href="/workers" className="text-sm text-slate-400">‹ {tr("back")}</Link>
       </div>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">เพิ่มคนงานใหม่</h1>
+      <h1 className="mb-6 text-2xl font-bold text-slate-900">{tr("newWorkerTitle")}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl bg-white p-5 shadow-sm">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">ชื่อ</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("colName")}</label>
           <input
             type="text"
             value={displayName}
@@ -160,7 +166,7 @@ export default function NewWorkerPage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">ชื่อผู้ใช้</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("usernameLabel")}</label>
           <input
             type="text"
             value={username}
@@ -172,13 +178,17 @@ export default function NewWorkerPage() {
             }`}
           />
           <p className="mt-1 text-xs text-slate-400">
-            ใช้เข้าสู่ระบบเป็น {usernameTrimmed || "worker4"}@farm.local — ใช้ตัวอักษร a-z, ตัวเลข, . _ - เท่านั้น
+            {lang === "th"
+              ? `ใช้เข้าสู่ระบบเป็น ${usernameTrimmed || "worker4"}@farm.local — ใช้ตัวอักษร a-z, ตัวเลข, . _ - เท่านั้น`
+              : lang === "my"
+              ? `${usernameTrimmed || "worker4"}@farm.local ဖြင့် လော့ဂ်အင်ဝင်ပါမည် — a-z, ဂဏန်း, . _ - သာ အသုံးပြုပါ`
+              : `Logs in as ${usernameTrimmed || "worker4"}@farm.local — letters a-z, digits, . _ - only`}
           </p>
-          {!usernameValid && <p className="mt-1 text-xs text-red-500">รูปแบบไม่ถูกต้อง</p>}
+          {!usernameValid && <p className="mt-1 text-xs text-red-500">{tr("invalidFormat")}</p>}
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">รหัสผ่าน</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("passwordFieldLabel")}</label>
           <input
             type="text"
             value={password}
@@ -187,11 +197,11 @@ export default function NewWorkerPage() {
             required
             className="h-12 w-full rounded-xl border border-slate-300 px-4 text-base focus:border-emerald-500 focus:outline-none"
           />
-          <p className="mt-1 text-xs text-slate-400">อย่างน้อย 4 ตัวอักษร</p>
+          <p className="mt-1 text-xs text-slate-400">{tr("minPasswordHint")}</p>
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">ภาษา</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("languageFieldLabel")}</label>
           <div className="flex gap-2">
             {LANGUAGES.map((l) => (
               <button
@@ -209,7 +219,7 @@ export default function NewWorkerPage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">โซนที่รับผิดชอบ</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("zonesResponsibleLabel")}</label>
           <input
             type="text"
             value={zones}
@@ -218,7 +228,7 @@ export default function NewWorkerPage() {
             required
             className="h-12 w-full rounded-xl border border-slate-300 px-4 text-base uppercase focus:border-emerald-500 focus:outline-none"
           />
-          <p className="mt-1 text-xs text-slate-400">ตัวอักษรโซน คั่นด้วยจุลภาค เช่น A,B</p>
+          <p className="mt-1 text-xs text-slate-400">{tr("zonesHint")}</p>
         </div>
 
         <button
@@ -226,7 +236,7 @@ export default function NewWorkerPage() {
           disabled={!canSubmit}
           className="h-12 w-full rounded-xl bg-emerald-600 text-base font-semibold text-white transition active:bg-emerald-700 disabled:bg-slate-300"
         >
-          {submitting ? "กำลังสร้าง..." : "สร้างบัญชี"}
+          {submitting ? tr("creatingAccount") : tr("createAccountButton")}
         </button>
       </form>
     </div>
