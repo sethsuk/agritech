@@ -8,6 +8,7 @@ import { NumericCounter } from "./NumericCounter";
 import { ColorPicker } from "./ColorPicker";
 import { SeverityPicker } from "./SeverityPicker";
 import { IconDropdown } from "./IconDropdown";
+import { GradeCounter } from "./GradeCounter";
 
 type Props = {
   fields: TaskField[];
@@ -95,6 +96,22 @@ export function TaskFormRenderer({ fields, formData, onChange }: Props) {
               <IconDropdown
                 options={field.options ?? []}
                 value={strValue}
+                onChange={(v) => onChange(field.field_id, v)}
+              />
+            </FieldWrapper>
+          );
+        }
+
+        if (field.type === "grade_counter") {
+          const objValue = rawValue && typeof rawValue === "object" ? rawValue as Record<string, number> : null;
+          return (
+            <FieldWrapper key={field.field_id} field={field} lang={lang}>
+              <GradeCounter
+                options={field.options ?? []}
+                value={objValue}
+                min={field.min}
+                max={field.max}
+                step={field.step}
                 onChange={(v) => onChange(field.field_id, v)}
               />
             </FieldWrapper>

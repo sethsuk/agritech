@@ -11,6 +11,24 @@ export function checkBounds(
   const flags: string[] = [];
 
   for (const field of fields) {
+    if (field.type === "grade_counter") {
+      const raw = formData[field.field_id];
+      if (raw === undefined || raw === null || typeof raw !== "object") continue;
+
+      for (const [grade, rawCount] of Object.entries(raw as Record<string, unknown>)) {
+        const value = Number(rawCount);
+        if (isNaN(value)) continue;
+
+        if (field.min !== undefined && value < field.min) {
+          return { ok: false, error: `${field.field_id}.${grade} below minimum ${field.min}` };
+        }
+        if (field.max !== undefined && value > field.max) {
+          return { ok: false, error: `${field.field_id}.${grade} above maximum ${field.max}` };
+        }
+      }
+      continue;
+    }
+
     if (field.type !== "numeric_counter" && field.type !== "slider") continue;
     const raw = formData[field.field_id];
     if (raw === undefined || raw === null) continue;

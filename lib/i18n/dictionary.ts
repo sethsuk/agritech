@@ -61,6 +61,7 @@ export const dict = {
   photoAlt: { th: "รูปที่ถ่าย", my: "ရိုက်ထားသောဓာတ်ပုံ", en: "Captured photo" },
 
   numericTapToSet: { th: "แตะเพื่อตั้งค่า", my: "တန်ဖိုးသတ်မှတ်ရန် နှိပ်ပါ", en: "Tap to set" },
+  totalFruitCount: { th: "จำนวนผลรวม", my: "စုစုပေါင်း အသီးအရေအတွက်", en: "Total fruit count" },
   warnBelow: { th: "ค่าต่ำกว่าเกณฑ์ปกติ", my: "ပုံမှန်ထက် နည်းနေသည်", en: "Below normal range" },
   warnAbove: { th: "ค่าสูงกว่าเกณฑ์ปกติ", my: "ပုံမှန်ထက် များနေသည်", en: "Above normal range" },
 } as const satisfies Record<string, I18nString>;

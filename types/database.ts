@@ -33,7 +33,7 @@ export interface TaskFieldOption {
 
 export interface TaskField {
   field_id: string;
-  type: "numeric_counter" | "dropdown" | "color_picker" | "severity_picker" | "slider";
+  type: "numeric_counter" | "dropdown" | "color_picker" | "severity_picker" | "slider" | "grade_counter";
   label_icon: string;
   label: I18nString;
   required: boolean;

@@ -113,12 +113,9 @@ VALUES
       {"value":"yellow","icon":"🟡","label":{"th":"เหลือง","my":"အဝါ","en":"Yellow"}},
       {"value":"white","icon":"⚪","label":{"th":"ขาว","my":"အဖြူ","en":"White"}}
     ]},
-   {"field_id":"fruit_count","type":"numeric_counter","label_icon":"🥭",
-    "label":{"th":"จำนวนผล","my":"သီးအရေအတွက်","en":"Fruit count"},
-    "required":true,"min":0,"max":200,"step":1},
-   {"field_id":"grade","type":"dropdown","label_icon":"⭐",
-    "label":{"th":"เกรด","my":"အဆင့်","en":"Grade"},
-    "required":true,
+   {"field_id":"grade_counts","type":"grade_counter","label_icon":"🥭",
+    "label":{"th":"จำนวนผลตามเกรด","my":"အဆင့်အလိုက် အသီးအရေအတွက်","en":"Fruit count by grade"},
+    "required":true,"min":0,"max":200,"step":1,
     "options":[
       {"value":"A","icon":"🥇","label":{"th":"A","my":"A","en":"A"}},
       {"value":"B","icon":"🥈","label":{"th":"B","my":"B","en":"B"}},
