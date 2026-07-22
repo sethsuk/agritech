@@ -6,12 +6,16 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { isValidTreeId } from "@/lib/treeId";
 import { downloadTreeQrLabel } from "@/lib/qrLabel";
+import { t } from "@/lib/i18n/t";
+import { useLang } from "@/lib/i18n/LanguageContext";
+import { dict, type DictKey } from "@/lib/i18n/dictionary";
 import type { DbTree } from "@/types/database";
 
 const KNOWN_VARIETIES = ["Monthong", "Chanee", "Puangmanee"];
 
 export default function NewTreePage() {
   const router = useRouter();
+  const { lang } = useLang();
 
   const [treeId, setTreeId] = useState("");
   const [varietyChoice, setVarietyChoice] = useState(KNOWN_VARIETIES[0]);
@@ -21,6 +25,8 @@ export default function NewTreePage() {
   const [capturingGps, setCapturingGps] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [createdTree, setCreatedTree] = useState<DbTree | null>(null);
+
+  const tr = (key: DictKey) => t(dict[key], lang);
 
   const treeIdTrimmed = treeId.trim().toUpperCase();
   const treeIdValid = treeIdTrimmed.length === 0 || isValidTreeId(treeIdTrimmed);
@@ -35,7 +41,7 @@ export default function NewTreePage() {
 
   function captureGps() {
     if (!navigator.geolocation) {
-      toast.error("อุปกรณ์นี้ไม่รองรับ GPS");
+      toast.error(tr("gpsUnsupported"));
       return;
     }
     setCapturingGps(true);
@@ -45,7 +51,7 @@ export default function NewTreePage() {
         setCapturingGps(false);
       },
       () => {
-        toast.error("ไม่สามารถอ่านตำแหน่ง GPS ได้ กรุณาลองใหม่ที่ต้นไม้");
+        toast.error(tr("gpsReadFailedRetry"));
         setCapturingGps(false);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
@@ -71,13 +77,13 @@ export default function NewTreePage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.detail ?? "สร้างต้นไม้ไม่สำเร็จ");
+        toast.error(data.detail ?? tr("createTreeFailedToast"));
         return;
       }
-      toast.success("สร้างต้นไม้เรียบร้อย ✓");
+      toast.success(tr("treeCreatedToast"));
       setCreatedTree(data.tree);
     } catch {
-      toast.error("เกิดข้อผิดพลาด ลองอีกครั้ง");
+      toast.error(tr("scanError"));
     } finally {
       setSubmitting(false);
     }
@@ -97,7 +103,7 @@ export default function NewTreePage() {
       <div className="mx-auto max-w-md px-4 py-6">
         <div className="rounded-2xl bg-white p-6 text-center shadow-sm">
           <div className="mb-3 text-5xl">✅</div>
-          <h1 className="text-xl font-bold text-slate-900">สร้างต้นไม้แล้ว</h1>
+          <h1 className="text-xl font-bold text-slate-900">{tr("treeCreatedTitle")}</h1>
           <p className="mt-1 font-mono text-lg text-slate-700">{createdTree.tree_id}</p>
           <p className="mt-1 text-sm text-slate-500">{createdTree.qr_code}</p>
 
@@ -105,7 +111,7 @@ export default function NewTreePage() {
             onClick={() => downloadTreeQrLabel(createdTree.tree_id, createdTree.qr_code)}
             className="mt-6 h-12 w-full rounded-xl bg-emerald-600 text-sm font-semibold text-white active:bg-emerald-700"
           >
-            📥 ดาวน์โหลด QR
+            📥 {tr("downloadQr")}
           </button>
 
           <div className="mt-3 flex gap-2">
@@ -113,13 +119,13 @@ export default function NewTreePage() {
               onClick={resetForm}
               className="h-12 flex-1 rounded-xl bg-slate-100 text-sm font-medium text-slate-600 active:bg-slate-200"
             >
-              เพิ่มต้นไม้อีกต้น
+              {tr("addAnotherTree")}
             </button>
             <button
               onClick={() => router.push(`/trees/${createdTree.tree_id}`)}
               className="h-12 flex-1 rounded-xl bg-slate-100 text-sm font-medium text-slate-600 active:bg-slate-200"
             >
-              ดูรายละเอียด
+              {tr("viewDetails")}
             </button>
           </div>
         </div>
@@ -130,14 +136,14 @@ export default function NewTreePage() {
   return (
     <div className="mx-auto max-w-md px-4 py-6">
       <div className="mb-4 flex items-center gap-2">
-        <Link href="/trees" className="text-sm text-slate-400">‹ กลับ</Link>
+        <Link href="/trees" className="text-sm text-slate-400">‹ {tr("back")}</Link>
       </div>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">เพิ่มต้นไม้ใหม่</h1>
+      <h1 className="mb-6 text-2xl font-bold text-slate-900">{tr("newTreeTitle")}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl bg-white p-5 shadow-sm">
         <div>
           <label className="mb-1.5 block text-sm font-medium text-slate-700">
-            รหัสต้นไม้
+            {tr("treeIdLabel")}
           </label>
           <input
             type="text"
@@ -150,15 +156,15 @@ export default function NewTreePage() {
             }`}
           />
           <p className="mt-1 text-xs text-slate-400">
-            รูปแบบ: [โซน][ฝั่ง L/R][แถว]-[คอลัมน์] เช่น AL13-7
+            {tr("treeIdFormatHint")}
           </p>
           {!treeIdValid && (
-            <p className="mt-1 text-xs text-red-500">รูปแบบไม่ถูกต้อง</p>
+            <p className="mt-1 text-xs text-red-500">{tr("invalidFormat")}</p>
           )}
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">พันธุ์</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("colVariety")}</label>
           <select
             value={varietyChoice}
             onChange={(e) => setVarietyChoice(e.target.value)}
@@ -167,14 +173,14 @@ export default function NewTreePage() {
             {KNOWN_VARIETIES.map((v) => (
               <option key={v} value={v}>{v}</option>
             ))}
-            <option value="other">อื่นๆ...</option>
+            <option value="other">{tr("otherOption")}</option>
           </select>
           {varietyChoice === "other" && (
             <input
               type="text"
               value={customVariety}
               onChange={(e) => setCustomVariety(e.target.value)}
-              placeholder="ระบุพันธุ์"
+              placeholder={tr("customVarietyPlaceholder")}
               required
               className="mt-2 h-12 w-full rounded-xl border border-slate-300 px-4 text-base focus:border-emerald-500 focus:outline-none"
             />
@@ -182,7 +188,7 @@ export default function NewTreePage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">วันที่ปลูก</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("plantedDateLabel")}</label>
           <input
             type="date"
             value={plantedDate}
@@ -193,7 +199,7 @@ export default function NewTreePage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">ตำแหน่ง GPS</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("gpsLocationLabel")}</label>
           <button
             type="button"
             onClick={captureGps}
@@ -203,12 +209,12 @@ export default function NewTreePage() {
             } disabled:opacity-50`}
           >
             {capturingGps
-              ? "กำลังอ่านตำแหน่ง..."
+              ? tr("readingLocation")
               : gps
               ? `✓ ${gps.lat.toFixed(6)}, ${gps.long.toFixed(6)}`
-              : "📍 จับตำแหน่งปัจจุบัน"}
+              : tr("currentLocationButton")}
           </button>
-          <p className="mt-1 text-xs text-slate-400">ยืนที่ต้นไม้แล้วกดปุ่มนี้</p>
+          <p className="mt-1 text-xs text-slate-400">{tr("gpsStandHint")}</p>
         </div>
 
         <button
@@ -216,7 +222,7 @@ export default function NewTreePage() {
           disabled={!canSubmit}
           className="h-12 w-full rounded-xl bg-emerald-600 text-base font-semibold text-white transition active:bg-emerald-700 disabled:bg-slate-300"
         >
-          {submitting ? "กำลังบันทึก..." : "สร้างต้นไม้"}
+          {submitting ? tr("submitting") : tr("createTreeButton")}
         </button>
       </form>
     </div>

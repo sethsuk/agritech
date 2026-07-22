@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ManagerBottomNav } from "@/components/manager/ManagerBottomNav";
 import { LogoutButton } from "@/components/manager/LogoutButton";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { T } from "@/components/T";
 
 export default async function ManagerLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -29,12 +30,12 @@ export default async function ManagerLayout({ children }: { children: ReactNode 
       {/* Top nav — desktop only */}
       <nav className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3">
         <div className="mx-auto flex max-w-6xl items-center gap-6">
-          <span className="text-lg font-bold text-emerald-700">🌳 ระบบสวนทุเรียน</span>
+          <span className="text-lg font-bold text-emerald-700">🌳 <T k="loginTitle" /></span>
           <div className="hidden gap-4 sm:flex">
-            <Link href="/dashboard" className="text-sm text-slate-600 hover:text-emerald-700">ภาพรวม</Link>
-            <Link href="/alerts"    className="text-sm text-slate-600 hover:text-emerald-700">การแจ้งเตือน</Link>
-            <Link href="/workers"   className="text-sm text-slate-600 hover:text-emerald-700">คนงาน</Link>
-            <Link href="/trees"     className="text-sm text-slate-600 hover:text-emerald-700">ต้นทุเรียน</Link>
+            <Link href="/dashboard" className="text-sm text-slate-600 hover:text-emerald-700"><T k="navOverview" /></Link>
+            <Link href="/alerts"    className="text-sm text-slate-600 hover:text-emerald-700"><T k="navAlerts" /></Link>
+            <Link href="/workers"   className="text-sm text-slate-600 hover:text-emerald-700"><T k="navWorkers" /></Link>
+            <Link href="/trees"     className="text-sm text-slate-600 hover:text-emerald-700"><T k="navTrees" /></Link>
           </div>
           <div className="ml-auto flex items-center gap-4">
             <LanguageToggle />

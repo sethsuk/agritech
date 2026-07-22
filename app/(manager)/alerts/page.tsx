@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { t } from "@/lib/i18n/t";
+import { useLang } from "@/lib/i18n/LanguageContext";
+import { dict, type DictKey } from "@/lib/i18n/dictionary";
 import type { DbAlert } from "@/types/database";
 
 type AlertWithRelations = DbAlert & {
@@ -22,26 +25,35 @@ const tierBadge: Record<string, string> = {
   tier_3: "bg-slate-100 text-slate-600",
 };
 
-const tierLabel: Record<string, string> = {
-  tier_1: "ด่วน",
-  tier_2: "ปานกลาง",
-  tier_3: "ข้อมูล",
+const tierLabelKey: Record<string, DictKey> = {
+  tier_1: "alertTierUrgent",
+  tier_2: "alertTierModerate",
+  tier_3: "alertTierInfo",
+};
+
+const statusLabelKey: Record<"open" | "resolved" | "dismissed", DictKey> = {
+  open: "statusOpen",
+  resolved: "statusResolved",
+  dismissed: "statusDismissed",
 };
 
 export default function AlertsPage() {
+  const { lang } = useLang();
   const [alerts, setAlerts] = useState<AlertWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"open" | "resolved" | "dismissed">("open");
   const [updating, setUpdating] = useState<string | null>(null);
+
+  const tr = (key: DictKey) => t(dict[key], lang);
 
   const loadAlerts = useCallback(() => {
     setLoading(true);
     fetch(`/api/manager/alerts?status=${statusFilter}`)
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then(setAlerts)
-      .catch(() => toast.error("โหลดการแจ้งเตือนไม่สำเร็จ"))
+      .catch(() => toast.error(tr("loadAlertsError")))
       .finally(() => setLoading(false));
-  }, [statusFilter]);
+  }, [statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadAlerts(); }, [loadAlerts]);
 
@@ -54,10 +66,10 @@ export default function AlertsPage() {
         body: JSON.stringify({ alertId, status }),
       });
       if (!res.ok) throw new Error();
-      toast.success(status === "resolved" ? "แก้ไขแล้ว" : "ปิดการแจ้งเตือน");
+      toast.success(status === "resolved" ? tr("statusResolved") : tr("alertDismissedToast"));
       loadAlerts();
     } catch {
-      toast.error("ดำเนินการไม่สำเร็จ");
+      toast.error(tr("actionFailedToast"));
     } finally {
       setUpdating(null);
     }
@@ -66,7 +78,7 @@ export default function AlertsPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">การแจ้งเตือน</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{tr("navAlerts")}</h1>
         <div className="flex gap-2 rounded-xl bg-slate-100 p-1">
           {(["open", "resolved", "dismissed"] as const).map((s) => (
             <button
@@ -76,7 +88,7 @@ export default function AlertsPage() {
                 statusFilter === s ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
               }`}
             >
-              {s === "open" ? "เปิด" : s === "resolved" ? "แก้ไขแล้ว" : "ปิดแล้ว"}
+              {tr(statusLabelKey[s])}
             </button>
           ))}
         </div>
@@ -92,7 +104,7 @@ export default function AlertsPage() {
 
       {!loading && alerts.length === 0 && (
         <div className="rounded-2xl bg-white p-10 text-center text-slate-400 shadow-sm">
-          ไม่มีการแจ้งเตือน
+          {tr("noAlertsAtAll")}
         </div>
       )}
 
@@ -105,7 +117,7 @@ export default function AlertsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${tierBadge[alert.tier]}`}>
-                    {tierLabel[alert.tier] ?? alert.tier}
+                    {tierLabelKey[alert.tier] ? tr(tierLabelKey[alert.tier]) : alert.tier}
                   </span>
                   <p className="text-sm font-semibold text-slate-800">
                     {alert.subtype.replace(/_/g, " ")}
@@ -114,11 +126,11 @@ export default function AlertsPage() {
 
                 {alert.trees && (
                   <p className="mt-0.5 text-xs text-slate-500">
-                    ต้น {alert.trees.tree_id} · โซน {alert.trees.zone} · {alert.trees.variety}
+                    {tr("treeTitlePrefix")} {alert.trees.tree_id} · {tr("zoneLabel")} {alert.trees.zone} · {alert.trees.variety}
                   </p>
                 )}
                 {alert.workers?.users && (
-                  <p className="text-xs text-slate-500">คนงาน: {alert.workers.users.display_name}</p>
+                  <p className="text-xs text-slate-500">{tr("navWorkers")}: {alert.workers.users.display_name}</p>
                 )}
                 <p className="mt-1 text-xs text-slate-400">
                   {new Date(alert.created_at).toLocaleString("th-TH")}
@@ -132,14 +144,14 @@ export default function AlertsPage() {
                     disabled={updating === alert.alert_id}
                     className="rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-700 active:bg-emerald-200 disabled:opacity-50"
                   >
-                    แก้ไขแล้ว
+                    {tr("statusResolved")}
                   </button>
                   <button
                     onClick={() => updateAlert(alert.alert_id, "dismissed")}
                     disabled={updating === alert.alert_id}
                     className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 active:bg-slate-200 disabled:opacity-50"
                   >
-                    ปิด
+                    {tr("dismissAction")}
                   </button>
                 </div>
               )}

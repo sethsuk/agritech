@@ -1,6 +1,19 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { T } from "@/components/T";
+import type { DictKey } from "@/lib/i18n/dictionary";
+
+const tierLabelKey: Record<string, DictKey> = {
+  trusted: "tierTrusted",
+  standard: "tierStandard",
+  audit: "tierAudit",
+};
+const tierColor: Record<string, string> = {
+  trusted: "bg-emerald-100 text-emerald-700",
+  standard: "bg-slate-100 text-slate-600",
+  audit: "bg-amber-100 text-amber-700",
+};
 
 export default async function WorkersPage() {
   const supabase = await createClient();
@@ -14,16 +27,9 @@ export default async function WorkersPage() {
     .eq("active", true)
     .order("created_at");
 
-  const tierLabel: Record<string, string> = { trusted: "เชื่อถือ", standard: "ปกติ", audit: "ตรวจสอบ" };
-  const tierColor: Record<string, string> = {
-    trusted: "bg-emerald-100 text-emerald-700",
-    standard: "bg-slate-100 text-slate-600",
-    audit: "bg-amber-100 text-amber-700",
-  };
-
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">คนงาน ({workers?.length ?? 0})</h1>
+      <h1 className="mb-6 text-2xl font-bold text-slate-900"><T k="navWorkers" /> ({workers?.length ?? 0})</h1>
 
       {/* Mobile: card list */}
       <div className="space-y-3 sm:hidden">
@@ -34,19 +40,19 @@ export default async function WorkersPage() {
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-slate-900">{name}</p>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${tierColor[w.trust_tier] ?? ""}`}>
-                  {tierLabel[w.trust_tier] ?? w.trust_tier}
+                  {tierLabelKey[w.trust_tier] ? <T k={tierLabelKey[w.trust_tier]} /> : w.trust_tier}
                 </span>
               </div>
               <p className="mt-1 text-sm text-slate-500">
-                โซน: {w.assigned_zones.join(", ") || "—"}
+                <T k="zoneLabel" />: {w.assigned_zones.join(", ") || "—"}
               </p>
               <div className="mt-2 flex gap-4 text-xs text-slate-400">
-                <span>บันทึก {w.reliability_logs_total}</span>
-                <span>แฟลก {(Number(w.reliability_flag_rate) * 100).toFixed(1)}%</span>
+                <span><T k="totalLogsPrefix" /> {w.reliability_logs_total}</span>
+                <span><T k="flagRatePrefix" /> {(Number(w.reliability_flag_rate) * 100).toFixed(1)}%</span>
                 <span>
                   {w.reliability_avg_completion_seconds > 0
-                    ? `เฉลี่ย ${Math.round(Number(w.reliability_avg_completion_seconds))}s`
-                    : "ยังไม่มีข้อมูล"}
+                    ? <><T k="avgPrefix" /> {Math.round(Number(w.reliability_avg_completion_seconds))}s</>
+                    : <T k="noDataYet" />}
                 </span>
               </div>
             </div>
@@ -54,7 +60,7 @@ export default async function WorkersPage() {
         })}
         {(!workers || workers.length === 0) && (
           <div className="rounded-2xl bg-white p-8 text-center text-slate-400 shadow-sm">
-            ยังไม่มีคนงาน
+            <T k="noWorkersYet" />
           </div>
         )}
       </div>
@@ -64,12 +70,12 @@ export default async function WorkersPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
-              <th className="px-4 py-3 font-medium">ชื่อ</th>
-              <th className="px-4 py-3 font-medium">โซน</th>
-              <th className="px-4 py-3 font-medium">บันทึกทั้งหมด</th>
-              <th className="px-4 py-3 font-medium">อัตราแฟลก</th>
-              <th className="px-4 py-3 font-medium">เวลาเฉลี่ย</th>
-              <th className="px-4 py-3 font-medium">ระดับความน่าเชื่อถือ</th>
+              <th className="px-4 py-3 font-medium"><T k="colName" /></th>
+              <th className="px-4 py-3 font-medium"><T k="zoneLabel" /></th>
+              <th className="px-4 py-3 font-medium"><T k="colTotalLogs" /></th>
+              <th className="px-4 py-3 font-medium"><T k="colFlagRate" /></th>
+              <th className="px-4 py-3 font-medium"><T k="colAvgTime" /></th>
+              <th className="px-4 py-3 font-medium"><T k="colTrustTier" /></th>
             </tr>
           </thead>
           <tbody>
@@ -90,14 +96,14 @@ export default async function WorkersPage() {
                 </td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${tierColor[w.trust_tier] ?? ""}`}>
-                    {tierLabel[w.trust_tier] ?? w.trust_tier}
+                    {tierLabelKey[w.trust_tier] ? <T k={tierLabelKey[w.trust_tier]} /> : w.trust_tier}
                   </span>
                 </td>
               </tr>
             ))}
             {(!workers || workers.length === 0) && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">ยังไม่มีคนงาน</td>
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400"><T k="noWorkersYet" /></td>
               </tr>
             )}
           </tbody>

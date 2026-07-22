@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { t } from "@/lib/i18n/t";
+import { useLang } from "@/lib/i18n/LanguageContext";
+import { dict, type DictKey } from "@/lib/i18n/dictionary";
 import type { DbAlert, DbTaskLog } from "@/types/database";
 
 interface OverviewData {
@@ -14,10 +17,10 @@ interface OverviewData {
   recentLogs: Pick<DbTaskLog, "log_id" | "tree_id" | "task_type" | "worker_id" | "submitted_at" | "validation_status" | "validation_flags">[];
 }
 
-const tierLabel: Record<string, { label: string; color: string }> = {
-  tier_1: { label: "ด่วน", color: "bg-red-100 text-red-700" },
-  tier_2: { label: "ปานกลาง", color: "bg-amber-100 text-amber-700" },
-  tier_3: { label: "ข้อมูล", color: "bg-slate-100 text-slate-600" },
+const tierMeta: Record<string, { key: DictKey; color: string }> = {
+  tier_1: { key: "alertTierUrgent", color: "bg-red-100 text-red-700" },
+  tier_2: { key: "alertTierModerate", color: "bg-amber-100 text-amber-700" },
+  tier_3: { key: "alertTierInfo", color: "bg-slate-100 text-slate-600" },
 };
 
 const categoryIcon: Record<string, string> = {
@@ -28,27 +31,30 @@ const categoryIcon: Record<string, string> = {
 };
 
 export default function ManagerDashboard() {
+  const { lang } = useLang();
   const [data, setData] = useState<OverviewData | null>(null);
+
+  const tr = (key: DictKey) => t(dict[key], lang);
 
   useEffect(() => {
     fetch("/api/manager/overview")
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then(setData)
-      .catch(() => toast.error("โหลดข้อมูลไม่สำเร็จ"));
-  }, []);
+      .catch(() => toast.error(tr("loadOverviewError")));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const statCards = data
+  const statCards: { label: string; value: number; color: string; href: string | null }[] = data
     ? [
-        { label: "การแจ้งเตือนที่เปิดอยู่", value: data.openAlertsCount, color: "text-red-600", href: "/alerts" },
-        { label: "การแจ้งเตือนด่วน", value: data.tier1AlertsCount, color: "text-amber-600", href: "/alerts" },
-        { label: "บันทึกวันนี้", value: data.logsToday, color: "text-emerald-600", href: null },
-        { label: "บันทึกสัปดาห์นี้", value: data.logsThisWeek, color: "text-blue-600", href: null },
+        { label: tr("statOpenAlerts"), value: data.openAlertsCount, color: "text-red-600", href: "/alerts" },
+        { label: tr("statUrgentAlerts"), value: data.tier1AlertsCount, color: "text-amber-600", href: "/alerts" },
+        { label: tr("statLogsToday"), value: data.logsToday, color: "text-emerald-600", href: null },
+        { label: tr("statLogsThisWeek"), value: data.logsThisWeek, color: "text-blue-600", href: null },
       ]
     : [];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">ภาพรวมฟาร์ม</h1>
+      <h1 className="mb-6 text-2xl font-bold text-slate-900">{tr("dashboardTitle")}</h1>
 
       {/* Stat tiles */}
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -75,9 +81,9 @@ export default function ManagerDashboard() {
         {/* Recent alerts */}
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-800">การแจ้งเตือนล่าสุด</h2>
+            <h2 className="font-semibold text-slate-800">{tr("recentAlertsTitle")}</h2>
             <Link href="/alerts" className="text-sm text-emerald-600 hover:underline">
-              ดูทั้งหมด →
+              {tr("viewAll")} →
             </Link>
           </div>
           <div className="space-y-2">
@@ -86,11 +92,12 @@ export default function ManagerDashboard() {
             )}
             {data?.recentAlerts.length === 0 && (
               <div className="rounded-2xl bg-white p-6 text-center text-sm text-slate-400 shadow-sm">
-                ไม่มีการแจ้งเตือนที่เปิดอยู่
+                {tr("noOpenAlerts")}
               </div>
             )}
             {data?.recentAlerts.map((alert) => {
-              const tier = tierLabel[alert.tier] ?? { label: alert.tier, color: "bg-slate-100 text-slate-600" };
+              const meta = tierMeta[alert.tier] ?? { key: null, color: "bg-slate-100 text-slate-600" };
+              const tierText = meta.key ? tr(meta.key) : alert.tier;
               return (
                 <div
                   key={alert.alert_id}
@@ -106,8 +113,8 @@ export default function ManagerDashboard() {
                       {new Date(alert.created_at).toLocaleString("th-TH")}
                     </p>
                   </div>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${tier.color}`}>
-                    {tier.label}
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${meta.color}`}>
+                    {tierText}
                   </span>
                 </div>
               );
@@ -117,14 +124,14 @@ export default function ManagerDashboard() {
 
         {/* Recent logs */}
         <section>
-          <h2 className="mb-3 font-semibold text-slate-800">บันทึกล่าสุด</h2>
+          <h2 className="mb-3 font-semibold text-slate-800">{tr("recentLogsTitle")}</h2>
           <div className="space-y-2">
             {data === null && (
               <div className="h-32 animate-pulse rounded-2xl bg-slate-100" />
             )}
             {data?.recentLogs.length === 0 && (
               <div className="rounded-2xl bg-white p-6 text-center text-sm text-slate-400 shadow-sm">
-                ยังไม่มีบันทึก
+                {tr("noLogsYet")}
               </div>
             )}
             {data?.recentLogs.map((log) => (

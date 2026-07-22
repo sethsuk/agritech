@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { TreeQrDownloadButton } from "@/components/manager/TreeQrDownloadButton";
+import { T } from "@/components/T";
 
 export default async function TreesPage({
   searchParams,
@@ -59,7 +60,7 @@ export default async function TreesPage({
       {/* Header + zone filter */}
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h1 className="mb-3 text-2xl font-bold text-slate-900">ต้นทุเรียน ({trees?.length ?? 0})</h1>
+          <h1 className="mb-3 text-2xl font-bold text-slate-900"><T k="navTrees" /> ({trees?.length ?? 0})</h1>
           <div className="flex flex-wrap gap-2">
             {zones.map((z) => (
               <Link
@@ -74,7 +75,7 @@ export default async function TreesPage({
             ))}
             {zoneFilter && (
               <Link href="/trees" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-500">
-                ล้างตัวกรอง
+                <T k="clearFilter" />
               </Link>
             )}
           </div>
@@ -83,7 +84,7 @@ export default async function TreesPage({
           href="/trees/new"
           className="flex h-10 flex-shrink-0 items-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white active:bg-emerald-700"
         >
-          + เพิ่มต้นไม้
+          <T k="addTreeButton" />
         </Link>
       </div>
 
@@ -113,14 +114,14 @@ export default async function TreesPage({
               </div>
             </div>
             <p className="mt-1 text-xs text-slate-400">
-              บันทึกล่าสุด: {tree.derived_days_since_last_log !== null
-                ? `${tree.derived_days_since_last_log} วันที่แล้ว`
-                : "ยังไม่มี"}
+              <T k="recentLogsTitle" />: {tree.derived_days_since_last_log !== null
+                ? <>{tree.derived_days_since_last_log} <T k="daysAgoSuffix" /></>
+                : <T k="neverLoggedYet" />}
             </p>
           </Link>
         ))}
         {(!trees || trees.length === 0) && (
-          <div className="rounded-2xl bg-white p-8 text-center text-slate-400 shadow-sm">ไม่พบต้นทุเรียน</div>
+          <div className="rounded-2xl bg-white p-8 text-center text-slate-400 shadow-sm"><T k="noTreesFound" /></div>
         )}
       </div>
 
@@ -129,12 +130,12 @@ export default async function TreesPage({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
-              <th className="px-4 py-3 font-medium">รหัสต้น</th>
-              <th className="px-4 py-3 font-medium">โซน</th>
-              <th className="px-4 py-3 font-medium">พันธุ์</th>
-              <th className="px-4 py-3 font-medium">สุขภาพ</th>
-              <th className="px-4 py-3 font-medium">บันทึกล่าสุด</th>
-              <th className="px-4 py-3 font-medium">การแจ้งเตือน</th>
+              <th className="px-4 py-3 font-medium"><T k="colTreeIdLabel" /></th>
+              <th className="px-4 py-3 font-medium"><T k="zoneLabel" /></th>
+              <th className="px-4 py-3 font-medium"><T k="colVariety" /></th>
+              <th className="px-4 py-3 font-medium"><T k="colHealth" /></th>
+              <th className="px-4 py-3 font-medium"><T k="recentLogsTitle" /></th>
+              <th className="px-4 py-3 font-medium"><T k="navAlerts" /></th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
@@ -153,8 +154,8 @@ export default async function TreesPage({
                 </td>
                 <td className="px-4 py-3 text-slate-500">
                   {tree.derived_days_since_last_log !== null
-                    ? `${tree.derived_days_since_last_log} วันที่แล้ว`
-                    : "ยังไม่มี"}
+                    ? <>{tree.derived_days_since_last_log} <T k="daysAgoSuffix" /></>
+                    : <T k="neverLoggedYet" />}
                 </td>
                 <td className="px-4 py-3">
                   {Number(tree.derived_open_alerts) > 0 ? (
@@ -172,7 +173,7 @@ export default async function TreesPage({
             ))}
             {(!trees || trees.length === 0) && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">ไม่พบต้นทุเรียน</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-400"><T k="noTreesFound" /></td>
               </tr>
             )}
           </tbody>

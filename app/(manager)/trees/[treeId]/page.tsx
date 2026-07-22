@@ -5,6 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { downloadTreeQrLabel } from "@/lib/qrLabel";
+import { t, type Lang } from "@/lib/i18n/t";
+import { useLang } from "@/lib/i18n/LanguageContext";
+import { dict, type DictKey } from "@/lib/i18n/dictionary";
 import type { DbTree, DbAlert } from "@/types/database";
 
 const KNOWN_VARIETIES = ["Monthong", "Chanee", "Puangmanee"];
@@ -31,9 +34,21 @@ const statusColor: Record<string, string> = {
   rejected: "text-red-600",
 };
 
+const retireConfirmText: Record<Lang, (treeId: string) => string> = {
+  th: (id) => `ปลดระวางต้น ${id}? คนงานจะสแกน QR ต้นนี้ไม่ได้อีก`,
+  my: (id) => `${id} ကို ပယ်ဖျက်မလား? အလုပ်သမားများ ဤပင်၏ QR ကို စကင်ဖတ်နိုင်တော့မည် မဟုတ်ပါ`,
+  en: (id) => `Retire tree ${id}? Workers will no longer be able to scan its QR code`,
+};
+const reactivateConfirmText: Record<Lang, (treeId: string) => string> = {
+  th: (id) => `เปิดใช้งานต้น ${id} อีกครั้ง?`,
+  my: (id) => `${id} ကို ပြန်လည်အသုံးပြုမလား?`,
+  en: (id) => `Reactivate tree ${id}?`,
+};
+
 export default function ManagerTreeDetailPage() {
   const { treeId } = useParams<{ treeId: string }>();
   const router = useRouter();
+  const { lang } = useLang();
 
   const [data, setData] = useState<DetailData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +62,8 @@ export default function ManagerTreeDetailPage() {
   const [saving, setSaving] = useState(false);
   const [retiring, setRetiring] = useState(false);
 
+  const tr = (key: DictKey) => t(dict[key], lang);
+
   const load = useCallback(() => {
     fetch(`/api/manager/trees/${treeId}`)
       .then((r) => r.ok ? r.json() : Promise.reject())
@@ -58,15 +75,15 @@ export default function ManagerTreeDetailPage() {
         setPlantedDate(d.tree.planted_date);
         setGpsOverride(null);
       })
-      .catch(() => toast.error("โหลดข้อมูลต้นไม้ไม่สำเร็จ"))
+      .catch(() => toast.error(tr("treeLoadError")))
       .finally(() => setLoading(false));
-  }, [treeId]);
+  }, [treeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(); }, [load]);
 
   function captureGps() {
     if (!navigator.geolocation) {
-      toast.error("อุปกรณ์นี้ไม่รองรับ GPS");
+      toast.error(tr("gpsUnsupported"));
       return;
     }
     setCapturingGps(true);
@@ -76,7 +93,7 @@ export default function ManagerTreeDetailPage() {
         setCapturingGps(false);
       },
       () => {
-        toast.error("ไม่สามารถอ่านตำแหน่ง GPS ได้");
+        toast.error(tr("gpsReadFailed"));
         setCapturingGps(false);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
@@ -101,13 +118,13 @@ export default function ManagerTreeDetailPage() {
         }),
       });
       if (!res.ok) {
-        toast.error("บันทึกไม่สำเร็จ");
+        toast.error(tr("saveFailedToast"));
         return;
       }
-      toast.success("บันทึกแล้ว ✓");
+      toast.success(tr("savedToast"));
       load();
     } catch {
-      toast.error("เกิดข้อผิดพลาด");
+      toast.error(tr("genericErrorToast"));
     } finally {
       setSaving(false);
     }
@@ -117,8 +134,8 @@ export default function ManagerTreeDetailPage() {
     if (!data) return;
     const retiring_ = data.tree.status === "active";
     const message = retiring_
-      ? `ปลดระวางต้น ${treeId}? คนงานจะสแกน QR ต้นนี้ไม่ได้อีก`
-      : `เปิดใช้งานต้น ${treeId} อีกครั้ง?`;
+      ? retireConfirmText[lang](treeId)
+      : reactivateConfirmText[lang](treeId);
     if (!window.confirm(message)) return;
 
     setRetiring(true);
@@ -129,13 +146,13 @@ export default function ManagerTreeDetailPage() {
         body: JSON.stringify({ status: retiring_ ? "retired" : "active" }),
       });
       if (!res.ok) {
-        toast.error("ดำเนินการไม่สำเร็จ");
+        toast.error(tr("actionFailedToast"));
         return;
       }
-      toast.success(retiring_ ? "ปลดระวางแล้ว" : "เปิดใช้งานแล้ว");
+      toast.success(retiring_ ? tr("retiredToast") : tr("reactivatedToast"));
       load();
     } catch {
-      toast.error("เกิดข้อผิดพลาด");
+      toast.error(tr("genericErrorToast"));
     } finally {
       setRetiring(false);
     }
@@ -152,7 +169,7 @@ export default function ManagerTreeDetailPage() {
   if (!data) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-6 text-center text-slate-400">
-        ไม่พบต้นไม้
+        {tr("treeNotFound")}
       </div>
     );
   }
@@ -162,10 +179,10 @@ export default function ManagerTreeDetailPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
-        <Link href="/trees" className="text-sm text-slate-400">‹ กลับ</Link>
+        <Link href="/trees" className="text-sm text-slate-400">‹ {tr("back")}</Link>
         {tree.status === "retired" && (
           <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-medium text-slate-600">
-            ปลดระวางแล้ว
+            {tr("retiredBadge")}
           </span>
         )}
       </div>
@@ -175,7 +192,7 @@ export default function ManagerTreeDetailPage() {
           <div>
             <h1 className="font-mono text-2xl font-bold text-slate-900">{tree.tree_id}</h1>
             <p className="mt-1 text-sm text-slate-500">
-              โซน {tree.zone}{tree.side} · แถว {tree.row_num} · คอลัมน์ {tree.position}
+              {tr("zoneLabel")} {tree.zone}{tree.side} · {tr("rowLabel")} {tree.row_num} · {tr("columnLabel")} {tree.position}
             </p>
           </div>
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
@@ -197,16 +214,16 @@ export default function ManagerTreeDetailPage() {
           onClick={() => downloadTreeQrLabel(tree.tree_id, tree.qr_code)}
           className="mt-4 h-11 w-full rounded-xl bg-slate-100 text-sm font-medium text-slate-700 active:bg-slate-200"
         >
-          📥 ดาวน์โหลด QR
+          📥 {tr("downloadQr")}
         </button>
       </div>
 
       {/* Edit form */}
       <form onSubmit={handleSave} className="mb-4 space-y-4 rounded-2xl bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-700">แก้ไขข้อมูล</h2>
+        <h2 className="text-sm font-semibold text-slate-700">{tr("editInfoTitle")}</h2>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">พันธุ์</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("colVariety")}</label>
           <select
             value={varietyChoice}
             onChange={(e) => setVarietyChoice(e.target.value)}
@@ -215,14 +232,14 @@ export default function ManagerTreeDetailPage() {
             {KNOWN_VARIETIES.map((v) => (
               <option key={v} value={v}>{v}</option>
             ))}
-            <option value="other">อื่นๆ...</option>
+            <option value="other">{tr("otherOption")}</option>
           </select>
           {varietyChoice === "other" && (
             <input
               type="text"
               value={customVariety}
               onChange={(e) => setCustomVariety(e.target.value)}
-              placeholder="ระบุพันธุ์"
+              placeholder={tr("customVarietyPlaceholder")}
               required
               className="mt-2 h-12 w-full rounded-xl border border-slate-300 px-4 text-base focus:border-emerald-500 focus:outline-none"
             />
@@ -230,7 +247,7 @@ export default function ManagerTreeDetailPage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">วันที่ปลูก</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("plantedDateLabel")}</label>
           <input
             type="date"
             value={plantedDate}
@@ -241,9 +258,9 @@ export default function ManagerTreeDetailPage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">ตำแหน่ง GPS</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("gpsLocationLabel")}</label>
           <p className="mb-2 text-xs text-slate-400">
-            ปัจจุบัน: {Number(tree.lat).toFixed(6)}, {Number(tree.long).toFixed(6)}
+            {tr("currentPrefix")}: {Number(tree.lat).toFixed(6)}, {Number(tree.long).toFixed(6)}
           </p>
           <button
             type="button"
@@ -254,10 +271,10 @@ export default function ManagerTreeDetailPage() {
             } disabled:opacity-50`}
           >
             {capturingGps
-              ? "กำลังอ่านตำแหน่ง..."
+              ? tr("readingLocation")
               : gpsOverride
               ? `✓ ${gpsOverride.lat.toFixed(6)}, ${gpsOverride.long.toFixed(6)}`
-              : "📍 จับตำแหน่งใหม่"}
+              : tr("recaptureLocation")}
           </button>
         </div>
 
@@ -266,15 +283,15 @@ export default function ManagerTreeDetailPage() {
           disabled={saving}
           className="h-12 w-full rounded-xl bg-emerald-600 text-base font-semibold text-white active:bg-emerald-700 disabled:bg-slate-300"
         >
-          {saving ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}
+          {saving ? tr("submitting") : tr("saveEditsButton")}
         </button>
       </form>
 
       {/* Recent logs */}
       <div className="mb-4 rounded-2xl bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-slate-700">บันทึกล่าสุด</h2>
+        <h2 className="mb-3 text-sm font-semibold text-slate-700">{tr("recentLogsTitle")}</h2>
         {recentLogs.length === 0 ? (
-          <p className="text-sm text-slate-400">ยังไม่มีบันทึก</p>
+          <p className="text-sm text-slate-400">{tr("noLogsYet")}</p>
         ) : (
           <div className="space-y-2">
             {recentLogs.map((log) => (
@@ -304,7 +321,7 @@ export default function ManagerTreeDetailPage() {
             : "bg-emerald-50 text-emerald-700 active:bg-emerald-100"
         } disabled:opacity-50`}
       >
-        {tree.status === "active" ? "🗑️ ปลดระวางต้นไม้นี้" : "♻️ เปิดใช้งานอีกครั้ง"}
+        {tree.status === "active" ? tr("retireTreeButton") : tr("reactivateTreeButton")}
       </button>
     </div>
   );
