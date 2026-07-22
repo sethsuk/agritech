@@ -110,6 +110,7 @@ export const dict = {
 
   clearFilter: { th: "ล้างตัวกรอง", my: "စစ်ထုတ်မှု ရှင်းရန်", en: "Clear filter" },
   addTreeButton: { th: "+ เพิ่มต้นไม้", my: "+ ဒူးရင်းပင် ထည့်ရန်", en: "+ Add tree" },
+  addWorkerButton: { th: "+ เพิ่มคนงาน", my: "+ အလုပ်သမား ထည့်ရန်", en: "+ Add worker" },
   noTreesFound: { th: "ไม่พบต้นทุเรียน", my: "ဒူးရင်းပင် မတွေ့ပါ", en: "No trees found" },
   daysAgoSuffix: { th: "วันที่แล้ว", my: "ရက် အရင်က", en: "days ago" },
   neverLoggedYet: { th: "ยังไม่มี", my: "မရှိသေးပါ", en: "None yet" },
