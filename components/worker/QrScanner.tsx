@@ -44,7 +44,9 @@ export function QrScanner({ onDecode, onUnavailable }: Props) {
           () => {},
         );
         if (cancelled) {
-          await instance.stop().catch(() => {});
+          // Html5Qrcode.stop() throws synchronously (not a rejected promise) when the
+          // scanner isn't in a running/paused state — try/catch, not .catch(), is required.
+          try { await instance.stop(); } catch {}
           return;
         }
         setStatus("ready");
@@ -58,9 +60,12 @@ export function QrScanner({ onDecode, onUnavailable }: Props) {
     return () => {
       cancelled = true;
       if (scanner) {
-        scanner.stop().catch(() => {}).finally(() => {
-          try { scanner?.clear(); } catch {}
-        });
+        (async () => {
+          // Same synchronous-throw hazard as above — the scanner may still be mid-startup
+          // (camera permission / hardware init) and not yet in a stoppable state.
+          try { await scanner!.stop(); } catch {}
+          try { scanner!.clear(); } catch {}
+        })();
       }
     };
   }, []);
