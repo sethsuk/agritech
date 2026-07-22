@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ManagerBottomNav } from "@/components/manager/ManagerBottomNav";
 import { LogoutButton } from "@/components/manager/LogoutButton";
+import { LanguageToggle } from "@/components/LanguageToggle";
 
 export default async function ManagerLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -36,6 +37,7 @@ export default async function ManagerLayout({ children }: { children: ReactNode 
             <Link href="/trees"     className="text-sm text-slate-600 hover:text-emerald-700">ต้นทุเรียน</Link>
           </div>
           <div className="ml-auto flex items-center gap-4">
+            <LanguageToggle />
             <span className="text-sm text-slate-500">{profile.display_name}</span>
             <LogoutButton />
           </div>
