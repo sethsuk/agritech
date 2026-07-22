@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { TaskFieldOption } from "@/types/database";
 import { t } from "@/lib/i18n/t";
 import { useLang } from "@/lib/i18n/LanguageContext";
@@ -20,15 +21,31 @@ export function GradeCounter({ options, value, min = 0, max = 200, step = 1, onC
   const { lang } = useLang();
   const counts = value ?? {};
   const total = options.reduce((sum, opt) => sum + (counts[opt.value] ?? 0), 0);
+  // Per-grade raw draft string while a field is mid-edit; absent means "show the count".
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   function setCount(gradeValue: string, next: number) {
     onChange({ ...counts, [gradeValue]: next });
+  }
+
+  function commitDraft(gradeValue: string) {
+    const draft = drafts[gradeValue];
+    if (draft === undefined) return;
+    const n = parseInt(draft, 10);
+    // Blank or non-numeric input reverts to the current count; otherwise clamp to bounds.
+    if (!isNaN(n)) setCount(gradeValue, Math.min(max, Math.max(min, n)));
+    setDrafts((d) => {
+      const next = { ...d };
+      delete next[gradeValue];
+      return next;
+    });
   }
 
   return (
     <div className="space-y-3">
       {options.map((opt) => {
         const count = counts[opt.value] ?? 0;
+        const displayValue = opt.value in drafts ? drafts[opt.value] : String(count);
         return (
           <div key={opt.value} className="flex items-center justify-between">
             <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -44,7 +61,17 @@ export function GradeCounter({ options, value, min = 0, max = 200, step = 1, onC
               >
                 −
               </button>
-              <span className="w-6 text-center text-lg font-bold text-slate-900">{count}</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={displayValue}
+                min={min}
+                max={max}
+                onChange={(e) => setDrafts((d) => ({ ...d, [opt.value]: e.target.value }))}
+                onFocus={(e) => e.target.select()}
+                onBlur={() => commitDraft(opt.value)}
+                className="h-10 w-14 rounded-xl border border-slate-200 text-center text-lg font-bold text-slate-900 focus:border-emerald-500 focus:outline-none [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+              />
               <button
                 type="button"
                 onClick={() => setCount(opt.value, Math.min(max, count + step))}
