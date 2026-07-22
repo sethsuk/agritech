@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export default async function WorkersPage() {
   const supabase = await createClient();
@@ -23,7 +24,15 @@ export default async function WorkersPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">คนงาน ({workers?.length ?? 0})</h1>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-slate-900">คนงาน ({workers?.length ?? 0})</h1>
+        <Link
+          href="/workers/new"
+          className="flex h-10 flex-shrink-0 items-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white active:bg-emerald-700"
+        >
+          + เพิ่มคนงาน
+        </Link>
+      </div>
 
       {/* Mobile: card list */}
       <div className="space-y-3 sm:hidden">
