@@ -1,14 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { resolve } from "path";
-import ws from "ws";
 
 config({ path: resolve(process.cwd(), ".env.local") });
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { realtime: { transport: ws } },
 );
 
 const ACCOUNTS = [

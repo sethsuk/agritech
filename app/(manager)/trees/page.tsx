@@ -29,7 +29,9 @@ export default async function TreesPage({
         .order("row_num")
         .order("position");
 
-      if (zoneFilter) query = query.eq("zone", zoneFilter.slice(0, 1)).eq("side", zoneFilter.slice(1));
+      const sideChar = zoneFilter?.slice(1);
+      const side = sideChar === "L" || sideChar === "R" ? sideChar : undefined;
+      if (zoneFilter && side) query = query.eq("zone", zoneFilter.slice(0, 1)).eq("side", side);
       return query.limit(200);
     })(),
   ]);

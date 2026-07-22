@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signToken } from "@/lib/logToken";
-import type { DbWorker, DbTaskDefinition } from "@/types/database";
+import type { DbWorker, DbTaskDefinition, PhotoRequirementReason } from "@/types/database";
 
 const BodySchema = z.object({
   treeId: z.string(),
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 
   // Decide photo requirement
   let photoRequired = false;
-  let photoRequirementReason = "none";
+  let photoRequirementReason: PhotoRequirementReason = "none";
   let auditSeed = "";
 
   const skipValidation = process.env.SKIP_VALIDATION === "true";

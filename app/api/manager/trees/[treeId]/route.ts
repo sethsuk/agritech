@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { DbTree } from "@/types/database";
 
 // GET /api/manager/trees/:treeId — tree detail + recent logs + open alerts.
 // PATCH /api/manager/trees/:treeId — edit variety/planted_date/GPS, or retire/unretire.
@@ -95,7 +96,7 @@ export async function PATCH(
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
   }
 
-  const update: Record<string, unknown> = {};
+  const update: Partial<DbTree> = {};
   if (variety !== undefined) update.variety = variety;
   if (plantedDate !== undefined) update.planted_date = plantedDate;
   if (lat !== undefined) update.lat = lat;
