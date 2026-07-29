@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { TreeQrDownloadButton } from "@/components/manager/TreeQrDownloadButton";
 import { T } from "@/components/T";
+import { VarietyName } from "@/components/VarietyName";
 
 export default async function TreesPage({
   searchParams,
@@ -99,7 +100,7 @@ export default async function TreesPage({
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-mono font-semibold text-slate-900">{tree.tree_id}</p>
-                <p className="text-xs text-slate-500">{tree.zone}{tree.side} · {tree.variety}</p>
+                <p className="text-xs text-slate-500">{tree.zone}{tree.side} · <VarietyName variety={tree.variety} /></p>
               </div>
               <div className="flex items-center gap-2">
                 {Number(tree.derived_open_alerts) > 0 && (
@@ -148,7 +149,7 @@ export default async function TreesPage({
                   </Link>
                 </td>
                 <td className="px-4 py-3 text-slate-500">{tree.zone}{tree.side}</td>
-                <td className="px-4 py-3 text-slate-500">{tree.variety}</td>
+                <td className="px-4 py-3 text-slate-500"><VarietyName variety={tree.variety} /></td>
                 <td className={`px-4 py-3 font-semibold ${healthColor(Number(tree.derived_health_score))}`}>
                   {Math.round(Number(tree.derived_health_score) * 100)}%
                 </td>

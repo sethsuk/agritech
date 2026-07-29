@@ -7,6 +7,7 @@ import { t, taskDisplayName } from "@/lib/i18n/t";
 import { WorkerHeader } from "@/components/worker/WorkerHeader";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict } from "@/lib/i18n/dictionary";
+import { varietyName } from "@/lib/i18n/varieties";
 import type { DbTree, DbTaskDefinition, DbSet } from "@/types/database";
 
 interface TreeData {
@@ -88,7 +89,7 @@ export default function TreeDetailPage() {
             <p className="text-sm text-slate-500">
               {tree.zone}{tree.side} · {tr("rowLabel")} {tree.row_num} · {tr("positionLabel")} {tree.position}
             </p>
-            <p className="mt-1 text-sm font-medium text-slate-700">{tree.variety}</p>
+            <p className="mt-1 text-sm font-medium text-slate-700">{varietyName(tree.variety, lang)}</p>
           </div>
           <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
             {tree.status === "active" ? tr("treeStatusActive") : tree.status}

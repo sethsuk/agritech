@@ -8,10 +8,9 @@ import { downloadTreeQrLabel } from "@/lib/qrLabel";
 import { t, type Lang } from "@/lib/i18n/t";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict, type DictKey } from "@/lib/i18n/dictionary";
+import { KNOWN_VARIETIES, varietyName } from "@/lib/i18n/varieties";
 import { DateInputDMY } from "@/components/DateInputDMY";
 import type { DbTree, DbAlert } from "@/types/database";
-
-const KNOWN_VARIETIES = ["Monthong", "Chanee", "Puangmanee"];
 
 interface LogRow {
   log_id: string;
@@ -230,8 +229,9 @@ export default function ManagerTreeDetailPage() {
             onChange={(e) => setVarietyChoice(e.target.value)}
             className="h-12 w-full rounded-xl border border-slate-300 px-4 text-base focus:border-emerald-500 focus:outline-none"
           >
+            {/* value stays the canonical romanized name; only the label is translated */}
             {KNOWN_VARIETIES.map((v) => (
-              <option key={v} value={v}>{v}</option>
+              <option key={v} value={v}>{varietyName(v, lang)}</option>
             ))}
             <option value="other">{tr("otherOption")}</option>
           </select>

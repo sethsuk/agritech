@@ -9,6 +9,7 @@ import { TaskFormRenderer } from "@/components/worker/TaskFormRenderer";
 import { PhotoCapture } from "@/components/worker/PhotoCapture";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict } from "@/lib/i18n/dictionary";
+import { varietyName } from "@/lib/i18n/varieties";
 import type { DbTaskDefinition, DbTree } from "@/types/database";
 
 interface StartLogResponse {
@@ -171,7 +172,7 @@ export default function TaskFormPage() {
       {/* Tree context */}
       <p className="mb-4 flex items-center gap-2 text-sm text-slate-500">
         <span className="text-xl">{taskDef.icon ?? "📋"}</span>
-        {tree.tree_id} · {tree.zone}{tree.side} · {tree.variety}
+        {tree.tree_id} · {tree.zone}{tree.side} · {varietyName(tree.variety, lang)}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">

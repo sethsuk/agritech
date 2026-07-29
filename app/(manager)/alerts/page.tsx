@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { t } from "@/lib/i18n/t";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict, type DictKey } from "@/lib/i18n/dictionary";
+import { varietyName } from "@/lib/i18n/varieties";
 import type { DbAlert } from "@/types/database";
 
 type AlertWithRelations = DbAlert & {
@@ -126,7 +127,7 @@ export default function AlertsPage() {
 
                 {alert.trees && (
                   <p className="mt-0.5 text-xs text-slate-500">
-                    {tr("treeTitlePrefix")} {alert.trees.tree_id} · {tr("zoneLabel")} {alert.trees.zone} · {alert.trees.variety}
+                    {tr("treeTitlePrefix")} {alert.trees.tree_id} · {tr("zoneLabel")} {alert.trees.zone} · {varietyName(alert.trees.variety, lang)}
                   </p>
                 )}
                 {alert.workers?.users && (
