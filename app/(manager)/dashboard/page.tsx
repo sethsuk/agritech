@@ -8,11 +8,16 @@ import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict, type DictKey } from "@/lib/i18n/dictionary";
 import type { DbAlert, DbTaskLog } from "@/types/database";
 
+type RangeKey = "today" | "week" | "month" | "year" | "all";
+
 interface OverviewData {
+  zones: string[];
+  range: RangeKey;
   openAlertsCount: number;
   tier1AlertsCount: number;
-  logsToday: number;
-  logsThisWeek: number;
+  logsInRangeCount: number;
+  fruitTotalInRange: number;
+  fruitByGrade: Record<string, number>;
   recentAlerts: (DbAlert & { trees?: { tree_id: string; zone: string }; workers?: { users: { display_name: string } } })[];
   recentLogs: Pick<DbTaskLog, "log_id" | "tree_id" | "task_type" | "worker_id" | "submitted_at" | "validation_status" | "validation_flags">[];
 }
@@ -30,34 +35,92 @@ const categoryIcon: Record<string, string> = {
   compliance: "📋",
 };
 
+const RANGES: { value: RangeKey; key: DictKey }[] = [
+  { value: "today", key: "rangeToday" },
+  { value: "week", key: "rangeWeek" },
+  { value: "month", key: "rangeMonth" },
+  { value: "year", key: "rangeYear" },
+  { value: "all", key: "rangeAll" },
+];
+
+const GRADE_ORDER = ["A", "B", "C", "reject"];
+
 export default function ManagerDashboard() {
   const { lang } = useLang();
   const [data, setData] = useState<OverviewData | null>(null);
+  const [zone, setZone] = useState<string | null>(null);
+  const [range, setRange] = useState<RangeKey>("week");
 
   const tr = (key: DictKey) => t(dict[key], lang);
 
   useEffect(() => {
-    fetch("/api/manager/overview")
+    const qs = new URLSearchParams({ range });
+    if (zone) qs.set("zone", zone);
+    fetch(`/api/manager/overview?${qs}`)
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then(setData)
       .catch(() => toast.error(tr("loadOverviewError")));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [zone, range]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const statCards: { label: string; value: number; color: string; href: string | null }[] = data
     ? [
         { label: tr("statOpenAlerts"), value: data.openAlertsCount, color: "text-red-600", href: "/alerts" },
         { label: tr("statUrgentAlerts"), value: data.tier1AlertsCount, color: "text-amber-600", href: "/alerts" },
-        { label: tr("statLogsToday"), value: data.logsToday, color: "text-emerald-600", href: null },
-        { label: tr("statLogsThisWeek"), value: data.logsThisWeek, color: "text-blue-600", href: null },
+        { label: tr("statLogsLabel"), value: data.logsInRangeCount, color: "text-emerald-600", href: null },
+        { label: tr("statFruitHarvested"), value: data.fruitTotalInRange, color: "text-blue-600", href: null },
       ]
+    : [];
+
+  const gradeEntries = data
+    ? Object.entries(data.fruitByGrade).sort(
+        (a, b) => GRADE_ORDER.indexOf(a[0]) - GRADE_ORDER.indexOf(b[0])
+      )
     : [];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">{tr("dashboardTitle")}</h1>
+      <h1 className="mb-4 text-2xl font-bold text-slate-900">{tr("dashboardTitle")}</h1>
+
+      {/* Filters */}
+      <div className="mb-6 space-y-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setZone(null)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+              zone === null ? "bg-emerald-600 text-white" : "bg-white text-slate-600 shadow-sm"
+            }`}
+          >
+            {tr("filterZoneAll")}
+          </button>
+          {data?.zones.map((z) => (
+            <button
+              key={z}
+              onClick={() => setZone(z)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+                zone === z ? "bg-emerald-600 text-white" : "bg-white text-slate-600 shadow-sm"
+              }`}
+            >
+              {z}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2 rounded-xl bg-slate-100 p-1 sm:inline-flex sm:w-auto">
+          {RANGES.map((r) => (
+            <button
+              key={r.value}
+              onClick={() => setRange(r.value)}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                range === r.value ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              {tr(r.key)}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Stat tiles */}
-      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {data === null
           ? Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100" />
@@ -76,6 +139,18 @@ export default function ManagerDashboard() {
               );
             })}
       </div>
+
+      {/* Fruit-by-grade breakdown */}
+      {data !== null && data.fruitTotalInRange > 0 && (
+        <div className="mb-8 flex flex-wrap gap-2">
+          {gradeEntries.map(([grade, count]) => (
+            <span key={grade} className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm">
+              {grade === "reject" ? tr("gradeLabelReject") : grade}: {count} {tr("fruitCountUnit")}
+            </span>
+          ))}
+        </div>
+      )}
+      {data === null && <div className="mb-8 h-8" />}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent alerts */}
