@@ -39,10 +39,20 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
     if (next >= min) onChange(next);
   }
 
+  // Tapping the placeholder just initialises the field at its resting value, so a
+  // legitimate min reading (0 flowers, 0 kg) is still one tap away.
+  function initialize() {
+    setDraft(null);
+    onChange(initialValue);
+  }
+
   function increment() {
     setDraft(null);
     if (value === null) {
-      onChange(initialValue);
+      // "+" means add one step — from an unset field that's the task's default if it
+      // has one, otherwise one step above the floor. Tapping + should never leave the
+      // counter sitting on min.
+      onChange(default_value !== undefined ? default_value : Math.min(max, stepped(min, 1, step)));
       return;
     }
     const next = stepped(value, 1, step);
@@ -72,7 +82,7 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
       {value === null && draft === null ? (
         <button
           type="button"
-          onClick={increment}
+          onClick={initialize}
           className="h-14 w-28 rounded-2xl border-2 border-dashed border-slate-300 text-center text-sm text-slate-400"
         >
 {t(dict.numericTapToSet, lang)}
