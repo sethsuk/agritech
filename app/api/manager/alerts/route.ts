@@ -55,7 +55,10 @@ export async function PATCH(request: Request) {
     .from("alerts")
     .update({
       status,
-      resolution: { action_taken: status, resolved_by: user.id, resolved_at: new Date().toISOString(), notes: notes ?? "" },
+      resolution_action_taken: status,
+      resolution_resolved_by: user.id,
+      resolution_resolved_at: new Date().toISOString(),
+      resolution_notes: notes ?? null,
     })
     .eq("alert_id", alertId);
 

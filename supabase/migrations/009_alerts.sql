@@ -9,7 +9,14 @@ CREATE TABLE public.alerts (
   triggered_by_log_id UUID REFERENCES public.task_logs(log_id),
 
   status alert_status NOT NULL DEFAULT 'open',
-  resolution JSONB,                   -- {action_taken, resolved_by, resolved_at, notes}
+
+  -- Resolution as columns rather than a JSONB blob: the shape is fixed, and
+  -- resolved_by is a real FK to the staff member who closed the alert.
+  resolution_action_taken TEXT,
+  resolution_resolved_by UUID REFERENCES public.users(id),
+  resolution_resolved_at TIMESTAMPTZ,
+  resolution_notes TEXT,
+
   suggested_response_task_def_id TEXT REFERENCES public.task_definitions(task_def_id),
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
