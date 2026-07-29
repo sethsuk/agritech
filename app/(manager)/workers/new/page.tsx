@@ -25,7 +25,7 @@ export default function NewWorkerPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [language, setLanguage] = useState<"my" | "th" | "en">("my");
-  const [zones, setZones] = useState("A");
+  // const [zones, setZones] = useState("A"); // workers currently see all zones — not asked at creation
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<CreatedWorker | null>(null);
   const [copied, setCopied] = useState(false);
@@ -34,13 +34,13 @@ export default function NewWorkerPage() {
 
   const usernameTrimmed = username.trim().toLowerCase();
   const usernameValid = usernameTrimmed.length === 0 || /^[a-z0-9._-]+$/.test(usernameTrimmed);
-  const zoneList = zones.split(",").map((z) => z.trim().toUpperCase()).filter(Boolean);
+  // const zoneList = zones.split(",").map((z) => z.trim().toUpperCase()).filter(Boolean); // workers currently see all zones
 
   const canSubmit =
     displayName.trim().length > 0 &&
     /^[a-z0-9._-]+$/.test(usernameTrimmed) &&
     password.length >= 4 &&
-    zoneList.length > 0 &&
+    // zoneList.length > 0 &&
     !submitting;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -57,7 +57,7 @@ export default function NewWorkerPage() {
           username: usernameTrimmed,
           password,
           language,
-          zones: zoneList,
+          // zones: zoneList, // workers currently see all zones — assigned server-side
         }),
       });
       const data = await res.json();
@@ -79,7 +79,7 @@ export default function NewWorkerPage() {
     setUsername("");
     setPassword("");
     setLanguage("my");
-    setZones("A");
+    // setZones("A"); // workers currently see all zones — not asked at creation
     setCreated(null);
     setCopied(false);
   }
@@ -218,6 +218,7 @@ export default function NewWorkerPage() {
           </div>
         </div>
 
+        {/* Workers currently see all zones — no zone input at creation.
         <div>
           <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("zonesResponsibleLabel")}</label>
           <input
@@ -230,6 +231,7 @@ export default function NewWorkerPage() {
           />
           <p className="mt-1 text-xs text-slate-400">{tr("zonesHint")}</p>
         </div>
+        */}
 
         <button
           type="submit"
