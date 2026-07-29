@@ -182,19 +182,45 @@ async function handleSideEffects({
       initial_fruit_count: flowerCount,
       current_fruit_count: flowerCount,
       status: "flowering",
-      history: [{ date: bloomDate, event: "bloom", fruit_count: flowerCount, log_id: logId }],
     }, { onConflict: "set_id" });
+
+    await admin.from("set_events").insert({
+      set_id: setId,
+      event_date: bloomDate,
+      event_type: "bloom",
+      fruit_count: flowerCount,
+      log_id: logId,
+    });
   }
 
-  // Harvest log → update set status
+  // Harvest log → close out the set and record the harvest event
   if (taskDef.task_type === "harvest" && isGenerationColor(rawSetColor)) {
     const color = rawSetColor;
     const season = `${now.getFullYear()}-main`;
     const setId = `set_${tree.tree_id.toLowerCase().replace(/-/g, "")}_${season}_${color}`;
 
-    await admin.from("sets")
+    const { data: updatedSet } = await admin.from("sets")
       .update({ status: "harvested", harvested_at: now.toISOString() })
-      .eq("set_id", setId);
+      .eq("set_id", setId)
+      .select("set_id")
+      .maybeSingle();
+
+    // Only log the event if the set actually exists — set_events.set_id is a real FK.
+    if (updatedSet) {
+      const gradeCounts = formData.grade_counts;
+      const harvested = gradeCounts && typeof gradeCounts === "object"
+        ? Object.values(gradeCounts as Record<string, unknown>)
+            .reduce<number>((sum, v) => sum + (isNaN(Number(v)) ? 0 : Number(v)), 0)
+        : 0;
+
+      await admin.from("set_events").insert({
+        set_id: setId,
+        event_date: now.toISOString().slice(0, 10),
+        event_type: "harvest",
+        fruit_count: harvested,
+        log_id: logId,
+      });
+    }
   }
 
   // Pest inspection with severity ≥ moderate → create alert

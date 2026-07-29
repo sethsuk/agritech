@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { t } from "@/lib/i18n/t";
+import { t, taskDisplayName } from "@/lib/i18n/t";
 import { WorkerHeader } from "@/components/worker/WorkerHeader";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict } from "@/lib/i18n/dictionary";
@@ -132,9 +132,9 @@ export default function TreeDetailPage() {
             }
             className="flex h-16 w-full items-center gap-4 rounded-2xl bg-white px-4 text-left shadow-sm active:bg-slate-50"
           >
-            <span className="text-2xl">{def.display_name.icon ?? "📋"}</span>
+            <span className="text-2xl">{def.icon ?? "📋"}</span>
             <div>
-              <p className="font-semibold text-slate-900">{t(def.display_name, lang)}</p>
+              <p className="font-semibold text-slate-900">{taskDisplayName(def, lang)}</p>
               <p className="text-xs text-slate-500">{def.task_type}</p>
             </div>
             <span className="ml-auto text-slate-300">›</span>
