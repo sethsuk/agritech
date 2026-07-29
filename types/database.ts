@@ -46,15 +46,9 @@ export interface TaskField {
   options?: TaskFieldOption[];
 }
 
-export interface PhotoPolicy {
-  mode: PhotoPolicyMode;
-  audit_rate_by_tier?: { trusted: number; standard: number; audit: number };
-}
-
 export interface DerivedState {
   last_updated: string | null;
   active_set_ids: string[];
-  last_maintenance: { type: string; date: string; task_log_id: string } | null;
   health_score: number;
   open_alerts: number;
   days_since_last_log: number | null;
@@ -105,7 +99,6 @@ export interface DbTree {
   retired_date: string | null;
   derived_last_updated: string | null;
   derived_active_set_ids: string[];
-  derived_last_maintenance: { type: string; date: string; task_log_id: string } | null;
   derived_health_score: number;
   derived_open_alerts: number;
   derived_days_since_last_log: number | null;
@@ -116,9 +109,11 @@ export interface DbTree {
 export interface DbTaskDefinition {
   task_def_id: string;
   task_type: string;
-  display_name: I18nString;
+  display_name_th: string;
+  display_name_my: string;
+  display_name_en: string;
+  icon: string | null;
   photo_policy_mode: PhotoPolicyMode;
-  photo_policy_audit_rates: { trusted: number; standard: number; audit: number } | null;
   requires_qr_scan: boolean;
   min_completion_seconds: number;
   min_qr_to_submit_seconds: number;
@@ -169,9 +164,18 @@ export interface DbSet {
   status: SetStatus;
   harvest_log_ids: string[];
   harvested_at: string | null;
-  history: Array<{ date: string; event: string; fruit_count: number; log_id: string }>;
   created_at: string;
   updated_at: string;
+}
+
+export interface DbSetEvent {
+  event_id: string;
+  set_id: string;
+  event_date: string;
+  event_type: string;
+  fruit_count: number;
+  log_id: string;
+  created_at: string;
 }
 
 export interface DbAlert {
@@ -183,7 +187,10 @@ export interface DbAlert {
   worker_id: string | null;
   triggered_by_log_id: string | null;
   status: AlertStatus;
-  resolution: { action_taken: string; resolved_by: string; resolved_at: string; notes: string } | null;
+  resolution_action_taken: string | null;
+  resolution_resolved_by: string | null;
+  resolution_resolved_at: string | null;
+  resolution_notes: string | null;
   suggested_response_task_def_id: string | null;
   created_at: string;
 }
@@ -199,16 +206,6 @@ export interface DbAssignment {
   triggered_by_alert_id: string | null;
   status: AssignmentStatus;
   completed_log_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface DbProtocol {
-  protocol_id: string;
-  alert_subtype: string;
-  response_task_def_id: string;
-  description: { th: string; en: string };
-  active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -239,9 +236,9 @@ export interface Database {
       task_definitions: Table<DbTaskDefinition>;
       task_logs: Table<DbTaskLog>;
       sets: Table<DbSet>;
+      set_events: Table<DbSetEvent>;
       alerts: Table<DbAlert>;
       assignments: Table<DbAssignment>;
-      protocols: Table<DbProtocol>;
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };

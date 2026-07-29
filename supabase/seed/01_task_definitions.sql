@@ -1,17 +1,19 @@
--- Five task definitions for the pilot.
--- Apply AFTER migrations are run: psql $DATABASE_URL -f supabase/seed/01_task_definitions.sql
+-- Six task definitions for the pilot.
+-- Applied automatically by scripts/migrate.ts after the migrations run.
+--
+-- `fields` stays JSONB on purpose: each task type has a structurally different set
+-- of inputs. Everything with a fixed shape (display name per language, icon) is a
+-- real column.
 
 INSERT INTO public.task_definitions
-  (task_def_id, task_type, display_name, photo_policy_mode, photo_policy_audit_rates,
-   requires_qr_scan, min_completion_seconds, min_qr_to_submit_seconds, fields)
+  (task_def_id, task_type, display_name_th, display_name_my, display_name_en, icon,
+   photo_policy_mode, requires_qr_scan, min_completion_seconds, min_qr_to_submit_seconds, fields)
 VALUES
 
 -- 1. Fertilizer application
 ('fertilizer_application_v1', 'fertilizer',
- '{"th":"ใส่ปุ๋ย","my":"မြေဩဇာထည့်ခြင်း","en":"Fertilizer application","icon":"🌱"}',
- 'audit_only',
- '{"trusted":0.01,"standard":0.05,"audit":0.15}',
- TRUE, 12, 20,
+ 'ใส่ปุ๋ย', 'မြေဩဇာထည့်ခြင်း', 'Fertilizer application', '🌱',
+ 'audit_only', TRUE, 12, 20,
  '[
    {"field_id":"fertilizer_type","type":"dropdown","label_icon":"🧪",
     "label":{"th":"ชนิดปุ๋ย","my":"မြေဩဇာအမျိုးအစား","en":"Fertilizer type"},
@@ -29,10 +31,8 @@ VALUES
 
 -- 2. Watering
 ('watering_v1', 'watering',
- '{"th":"รดน้ำ","my":"ရေလောင်းခြင်း","en":"Watering","icon":"💧"}',
- 'audit_only',
- '{"trusted":0.01,"standard":0.05,"audit":0.15}',
- TRUE, 8, 15,
+ 'รดน้ำ', 'ရေလောင်းခြင်း', 'Watering', '💧',
+ 'audit_only', TRUE, 8, 15,
  '[
    {"field_id":"duration_minutes","type":"numeric_counter","label_icon":"⏱️",
     "label":{"th":"ระยะเวลา (นาที)","my":"အချိန် (မိနစ်)","en":"Duration (minutes)"},
@@ -42,10 +42,8 @@ VALUES
 
 -- 3. Bloom logging
 ('bloom_log_v1', 'bloom_log',
- '{"th":"บันทึกการออกดอก","my":"ပန်းပွင့်မှတ်တမ်း","en":"Bloom logging","icon":"🌸"}',
- 'always',
- NULL,
- TRUE, 15, 25,
+ 'บันทึกการออกดอก', 'ပန်းပွင့်မှတ်တမ်း', 'Bloom logging', '🌸',
+ 'always', TRUE, 15, 25,
  '[
    {"field_id":"color","type":"color_picker","label_icon":"🎨",
     "label":{"th":"สีเชือก","my":"အရောင်","en":"Ribbon color"},
@@ -64,10 +62,8 @@ VALUES
 
 -- 4. Pest inspection
 ('pest_inspection_v1', 'pest_inspection',
- '{"th":"ตรวจหาศัตรูพืช","my":"ပိုးမွှားစစ်ဆေးခြင်း","en":"Pest inspection","icon":"🐛"}',
- 'always',
- NULL,
- TRUE, 15, 25,
+ 'ตรวจหาศัตรูพืช', 'ပိုးမွှားစစ်ဆေးခြင်း', 'Pest inspection', '🐛',
+ 'always', TRUE, 15, 25,
  '[
    {"field_id":"severity","type":"severity_picker","label_icon":"⚠️",
     "label":{"th":"ความรุนแรง","my":"ပြင်းထန်မှု","en":"Severity"},
@@ -83,10 +79,8 @@ VALUES
 
 -- 5. Soil acidity check
 ('soil_acidity_check_v1', 'soil_check',
- '{"th":"ตรวจค่ากรดดิน","my":"မြေဆီလွှာစစ်ဆေးခြင်း","en":"Soil acidity check","icon":"🧪"}',
- 'audit_only',
- '{"trusted":0.01,"standard":0.05,"audit":0.15}',
- TRUE, 15, 25,
+ 'ตรวจค่ากรดดิน', 'မြေဆီလွှာစစ်ဆေးခြင်း', 'Soil acidity check', '🧪',
+ 'audit_only', TRUE, 15, 25,
  '[
    {"field_id":"ph","type":"numeric_counter","label_icon":"🧪",
     "label":{"th":"ค่า pH","my":"pH တန်ဖိုး","en":"pH"},
@@ -99,10 +93,8 @@ VALUES
 
 -- 6. Harvest logging
 ('harvest_log_v1', 'harvest',
- '{"th":"บันทึกการเก็บเกี่ยว","my":"ရိတ်သိမ်းမှတ်တမ်း","en":"Harvest logging","icon":"🛒"}',
- 'always',
- NULL,
- TRUE, 20, 30,
+ 'บันทึกการเก็บเกี่ยว', 'ရိတ်သိမ်းမှတ်တမ်း', 'Harvest logging', '🛒',
+ 'always', TRUE, 20, 30,
  '[
    {"field_id":"set_color","type":"color_picker","label_icon":"🎨",
     "label":{"th":"สีชุด","my":"အရောင်","en":"Set color"},
@@ -124,13 +116,16 @@ VALUES
     ]}
  ]'
 )
+
 -- Upsert so re-seeding applies field/definition edits instead of being skipped as a
 -- duplicate. Without this, migrate.ts silently skips existing rows and DB stays stale.
 ON CONFLICT (task_def_id) DO UPDATE SET
   task_type                = EXCLUDED.task_type,
-  display_name             = EXCLUDED.display_name,
+  display_name_th          = EXCLUDED.display_name_th,
+  display_name_my          = EXCLUDED.display_name_my,
+  display_name_en          = EXCLUDED.display_name_en,
+  icon                     = EXCLUDED.icon,
   photo_policy_mode        = EXCLUDED.photo_policy_mode,
-  photo_policy_audit_rates = EXCLUDED.photo_policy_audit_rates,
   requires_qr_scan         = EXCLUDED.requires_qr_scan,
   min_completion_seconds   = EXCLUDED.min_completion_seconds,
   min_qr_to_submit_seconds = EXCLUDED.min_qr_to_submit_seconds,

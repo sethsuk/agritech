@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { t } from "@/lib/i18n/t";
+import { t, taskDisplayName } from "@/lib/i18n/t";
 import { WorkerHeader } from "@/components/worker/WorkerHeader";
 import { TaskFormRenderer } from "@/components/worker/TaskFormRenderer";
 import { PhotoCapture } from "@/components/worker/PhotoCapture";
@@ -163,14 +163,14 @@ export default function TaskFormPage() {
     <div className="flex min-h-dvh flex-col">
       <WorkerHeader
         variant="back"
-        title={t(taskDef.display_name, lang)}
+        title={taskDisplayName(taskDef, lang)}
         onBack={handleBack}
       />
 
       <main className="mx-auto w-full max-w-md flex-1 px-4 pt-4 pb-32">
       {/* Tree context */}
       <p className="mb-4 flex items-center gap-2 text-sm text-slate-500">
-        <span className="text-xl">{taskDef.display_name.icon ?? "📋"}</span>
+        <span className="text-xl">{taskDef.icon ?? "📋"}</span>
         {tree.tree_id} · {tree.zone}{tree.side} · {tree.variety}
       </p>
 

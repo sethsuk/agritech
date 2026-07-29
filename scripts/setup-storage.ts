@@ -1,6 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { resolve } from "path";
+import ws from "ws";
+
+// See scripts/seed-users.ts — supabase-js needs a WebSocket impl at construction
+// time on Node < 22, even though this script only touches Storage.
+(globalThis as { WebSocket?: unknown }).WebSocket ??= ws;
 
 config({ path: resolve(process.cwd(), ".env.local") });
 
