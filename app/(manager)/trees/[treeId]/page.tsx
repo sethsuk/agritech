@@ -8,6 +8,7 @@ import { downloadTreeQrLabel } from "@/lib/qrLabel";
 import { t, type Lang } from "@/lib/i18n/t";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict, type DictKey } from "@/lib/i18n/dictionary";
+import { DateInputDMY } from "@/components/DateInputDMY";
 import type { DbTree, DbAlert } from "@/types/database";
 
 const KNOWN_VARIETIES = ["Monthong", "Chanee", "Puangmanee"];
@@ -248,13 +249,7 @@ export default function ManagerTreeDetailPage() {
 
         <div>
           <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("plantedDateLabel")}</label>
-          <input
-            type="date"
-            value={plantedDate}
-            onChange={(e) => setPlantedDate(e.target.value)}
-            required
-            className="h-12 w-full rounded-xl border border-slate-300 px-4 text-base focus:border-emerald-500 focus:outline-none"
-          />
+          <DateInputDMY value={plantedDate} onChange={setPlantedDate} required />
         </div>
 
         <div>
