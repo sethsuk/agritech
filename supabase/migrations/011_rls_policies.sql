@@ -35,10 +35,11 @@ CREATE POLICY workers_read_own ON public.workers FOR SELECT USING (worker_id = a
 CREATE POLICY workers_read_all_for_staff ON public.workers FOR SELECT USING (public.is_manager() OR public.is_owner());
 CREATE POLICY workers_update_by_manager ON public.workers FOR UPDATE USING (public.is_manager());
 
--- trees: workers read trees in assigned zones; managers/owners read all
+-- trees: workers currently see all zones (zone restriction disabled, see worker_zones above)
 ALTER TABLE public.trees ENABLE ROW LEVEL SECURITY;
 CREATE POLICY trees_read_for_workers ON public.trees FOR SELECT
-  USING (public.is_worker() AND zone = ANY(public.worker_zones(auth.uid())));
+  USING (public.is_worker());
+  -- USING (public.is_worker() AND zone = ANY(public.worker_zones(auth.uid())));
 CREATE POLICY trees_read_for_staff ON public.trees FOR SELECT
   USING (public.is_manager() OR public.is_owner());
 CREATE POLICY trees_write_by_manager ON public.trees FOR ALL
@@ -63,26 +64,28 @@ CREATE POLICY task_logs_read_own ON public.task_logs FOR SELECT USING (worker_id
 CREATE POLICY task_logs_read_all_for_staff ON public.task_logs FOR SELECT
   USING (public.is_manager() OR public.is_owner());
 
--- sets: workers read sets on accessible trees; managers/owners read all
+-- sets: workers currently see all zones (zone restriction disabled); managers/owners read all
 ALTER TABLE public.sets ENABLE ROW LEVEL SECURITY;
 CREATE POLICY sets_read_for_workers ON public.sets FOR SELECT
-  USING (
-    public.is_worker() AND
-    tree_id IN (SELECT tree_id FROM public.trees WHERE zone = ANY(public.worker_zones(auth.uid())))
-  );
+  USING (public.is_worker());
+  -- USING (
+  --   public.is_worker() AND
+  --   tree_id IN (SELECT tree_id FROM public.trees WHERE zone = ANY(public.worker_zones(auth.uid())))
+  -- );
 CREATE POLICY sets_read_all_for_staff ON public.sets FOR SELECT
   USING (public.is_manager() OR public.is_owner());
 
 -- set_events: same visibility as the parent set; INSERTs via service role only
 ALTER TABLE public.set_events ENABLE ROW LEVEL SECURITY;
 CREATE POLICY set_events_read_for_workers ON public.set_events FOR SELECT
-  USING (
-    public.is_worker() AND
-    set_id IN (
-      SELECT set_id FROM public.sets
-      WHERE tree_id IN (SELECT tree_id FROM public.trees WHERE zone = ANY(public.worker_zones(auth.uid())))
-    )
-  );
+  USING (public.is_worker());
+  -- USING (
+  --   public.is_worker() AND
+  --   set_id IN (
+  --     SELECT set_id FROM public.sets
+  --     WHERE tree_id IN (SELECT tree_id FROM public.trees WHERE zone = ANY(public.worker_zones(auth.uid())))
+  --   )
+  -- );
 CREATE POLICY set_events_read_all_for_staff ON public.set_events FOR SELECT
   USING (public.is_manager() OR public.is_owner());
 

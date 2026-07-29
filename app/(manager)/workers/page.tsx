@@ -52,9 +52,11 @@ export default async function WorkersPage() {
                   {tierLabelKey[w.trust_tier] ? <T k={tierLabelKey[w.trust_tier]} /> : w.trust_tier}
                 </span>
               </div>
+              {/* Workers currently see all zones — zone display disabled.
               <p className="mt-1 text-sm text-slate-500">
                 <T k="zoneLabel" />: {w.assigned_zones.join(", ") || "—"}
               </p>
+              */}
               <div className="mt-2 flex gap-4 text-xs text-slate-400">
                 <span><T k="totalLogsPrefix" /> {w.reliability_logs_total}</span>
                 <span><T k="flagRatePrefix" /> {(Number(w.reliability_flag_rate) * 100).toFixed(1)}%</span>
@@ -80,7 +82,7 @@ export default async function WorkersPage() {
           <thead>
             <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
               <th className="px-4 py-3 font-medium"><T k="colName" /></th>
-              <th className="px-4 py-3 font-medium"><T k="zoneLabel" /></th>
+              {/* Workers currently see all zones — zone column disabled. <th className="px-4 py-3 font-medium"><T k="zoneLabel" /></th> */}
               <th className="px-4 py-3 font-medium"><T k="colTotalLogs" /></th>
               <th className="px-4 py-3 font-medium"><T k="colFlagRate" /></th>
               <th className="px-4 py-3 font-medium"><T k="colAvgTime" /></th>
@@ -93,7 +95,7 @@ export default async function WorkersPage() {
                 <td className="px-4 py-3 font-medium text-slate-800">
                   {(w as { users?: { display_name?: string } }).users?.display_name ?? "—"}
                 </td>
-                <td className="px-4 py-3 text-slate-500">{w.assigned_zones.join(", ") || "—"}</td>
+                {/* <td className="px-4 py-3 text-slate-500">{w.assigned_zones.join(", ") || "—"}</td> */}
                 <td className="px-4 py-3 text-slate-500">{w.reliability_logs_total}</td>
                 <td className="px-4 py-3 text-slate-500">
                   {(Number(w.reliability_flag_rate) * 100).toFixed(1)}%
@@ -112,7 +114,7 @@ export default async function WorkersPage() {
             ))}
             {(!workers || workers.length === 0) && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-400"><T k="noWorkersYet" /></td>
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-400"><T k="noWorkersYet" /></td>
               </tr>
             )}
           </tbody>

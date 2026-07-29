@@ -13,7 +13,7 @@ const CreateWorkerSchema = z.object({
   username: z.string().trim().toLowerCase().regex(/^[a-z0-9._-]+$/, "invalid_username"),
   password: z.string().min(4),
   language: z.enum(["my", "th", "en"]),
-  zones: z.array(z.string().trim().toUpperCase().min(1)).min(1),
+  // zones: z.array(z.string().trim().toUpperCase().min(1)).min(1), // workers currently see all zones, see below
 });
 
 export async function POST(request: Request) {
@@ -38,8 +38,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { displayName, username, password, language, zones } = parsed.data;
+  const { displayName, username, password, language } = parsed.data;
   const email = `${username}@farm.local`;
+
+  // Workers currently see all zones — assign every zone that exists instead of asking the manager.
+  const { data: zoneRows } = await admin.from("trees").select("zone");
+  const zones = Array.from(new Set((zoneRows ?? []).map((r) => r.zone)));
 
   const { data: authData, error: authErr } = await admin.auth.admin.createUser({
     email,
