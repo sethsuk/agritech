@@ -52,7 +52,7 @@ export default function TreeDetailPage() {
       <main className="mx-auto max-w-md px-4 py-6">
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-2xl bg-slate-100" />
+            <div key={i} className="h-20 animate-pulse rounded-lg bg-surface-alt" />
           ))}
         </div>
       </main>
@@ -62,8 +62,8 @@ export default function TreeDetailPage() {
   if (!treeData) {
     return (
       <main className="mx-auto max-w-md px-4 py-6 text-center">
-        <p className="text-slate-500">{tr("treeNotFound")}</p>
-        <button onClick={() => router.push("/scan")} className="mt-4 text-emerald-600 underline">
+        <p className="text-muted">{tr("treeNotFound")}</p>
+        <button onClick={() => router.push("/scan")} className="mt-4 text-primary-ink underline">
           {tr("backToScan")}
         </button>
       </main>
@@ -82,36 +82,43 @@ export default function TreeDetailPage() {
 
       <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
       {/* Tree info card */}
-      <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm">
+      <div className="mb-6 rounded-lg bg-surface p-4 border border-line">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-2xl font-bold text-slate-900">{tree.tree_id}</p>
-            <p className="text-sm text-slate-500">
+            <p className="text-2xl font-bold text-ink">{tree.tree_id}</p>
+            <p className="text-lg text-muted">
               {tree.zone}{tree.side} · {tr("rowLabel")} {tree.row_num} · {tr("positionLabel")} {tree.position}
             </p>
-            <p className="mt-1 text-sm font-medium text-slate-700">{varietyName(tree.variety, lang)}</p>
+            <p className="mt-1 text-lg font-semibold text-body">{varietyName(tree.variety, lang)}</p>
           </div>
-          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+          <span className="rounded-full bg-primary-tint px-3 py-1 text-base font-semibold text-primary-ink">
             {tree.status === "active" ? tr("treeStatusActive") : tree.status}
           </span>
         </div>
 
         {sets.length > 0 && (
-          <div className="mt-3 border-t border-slate-100 pt-3">
-            <p className="mb-2 text-xs font-medium text-slate-500">{tr("activeSets")}</p>
+          <div className="mt-3 border-t border-line pt-3">
+            <p className="mb-2 text-base font-semibold text-muted">{tr("activeSets")}</p>
             <div className="flex flex-wrap gap-2">
               {sets.map((s) => {
-                const colorMap: Record<string, string> = {
-                  red: "bg-red-100 text-red-700",
-                  blue: "bg-blue-100 text-blue-700",
-                  yellow: "bg-yellow-100 text-yellow-700",
-                  white: "bg-slate-100 text-slate-700",
+                // Ribbon colour shows as a discrete round swatch on a neutral chip,
+                // never as a coloured pill — that is what keeps it distinguishable
+                // from a status badge.
+                const swatch: Record<string, string> = {
+                  red: "bg-ribbon-red",
+                  blue: "bg-ribbon-blue",
+                  yellow: "bg-ribbon-yellow",
+                  white: "bg-ribbon-white",
                 };
                 return (
                   <span
                     key={s.set_id}
-                    className={`rounded-full px-3 py-1 text-xs font-medium ${colorMap[s.color] ?? "bg-slate-100 text-slate-700"}`}
+                    className="inline-flex items-center gap-2 rounded-full border border-line bg-surface-alt px-3 py-1 text-lg font-semibold text-body"
                   >
+                    <span
+                      aria-hidden
+                      className={`h-3.5 w-3.5 flex-shrink-0 rounded-full border border-line ${swatch[s.color] ?? "bg-ribbon-white"}`}
+                    />
                     {t(colorLabel[s.color] ?? colorLabel.white, lang)}
                     {" "}· {s.current_fruit_count} {tr("fruitCountUnit")}
                   </span>
@@ -123,7 +130,7 @@ export default function TreeDetailPage() {
       </div>
 
       {/* Task selection */}
-      <h2 className="mb-3 text-base font-semibold text-slate-700">{tr("chooseTask")}</h2>
+      <h2 className="mb-3 text-base font-semibold text-body">{tr("chooseTask")}</h2>
       <div className="space-y-3">
         {taskDefs.map((def) => (
           <button
@@ -131,14 +138,14 @@ export default function TreeDetailPage() {
             onClick={() =>
               router.push(`/tree/${treeId}/task/${def.task_def_id}`)
             }
-            className="flex h-16 w-full items-center gap-4 rounded-2xl bg-white px-4 text-left shadow-sm active:bg-slate-50"
+            className="flex h-15 w-full items-center gap-4 rounded-lg bg-surface px-4 text-left border border-line active:bg-surface-alt"
           >
             <span className="text-2xl">{def.icon ?? "📋"}</span>
             <div>
-              <p className="font-semibold text-slate-900">{taskDisplayName(def, lang)}</p>
-              <p className="text-xs text-slate-500">{def.task_type}</p>
+              <p className="font-semibold text-ink">{taskDisplayName(def, lang)}</p>
+              <p className="text-base text-muted">{def.task_type}</p>
             </div>
-            <span className="ml-auto text-slate-300">›</span>
+            <span className="ml-auto text-muted">›</span>
           </button>
         ))}
       </div>
@@ -150,7 +157,7 @@ export default function TreeDetailPage() {
           sessionStorage.removeItem("qr_value");
           router.push("/scan");
         }}
-        className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 text-sm font-medium text-slate-500 active:bg-slate-50"
+        className="mt-6 flex h-15 w-full items-center justify-center gap-2 rounded-lg border-2 border-line text-lg font-semibold text-muted active:bg-surface-alt"
       >
         <span>📷</span>
         <span>{tr("exitTree")}</span>

@@ -22,7 +22,7 @@ export default async function WorkerLayout({ children }: { children: ReactNode }
   }
 
   return (
-    <div className="min-h-dvh bg-slate-50 font-[family-name:var(--font-thai)]">
+    <div className="min-h-dvh bg-surface-alt font-[family-name:var(--font-thai)]">
       {children}
     </div>
   );

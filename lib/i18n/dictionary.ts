@@ -13,6 +13,12 @@ export const dict = {
   loginError: { th: "อีเมลหรือรหัสผ่านไม่ถูกต้อง", my: "အီးမေးလ် သို့မဟုတ် စကားဝှက် မှားနေသည်", en: "Invalid email or password" },
 
   logout: { th: "ออกจากระบบ", my: "ထွက်ရန်", en: "Log out" },
+  confirmAction: { th: "ยืนยัน", my: "အတည်ပြုရန်", en: "Confirm" },
+  cancelAction: { th: "ยกเลิก", my: "မလုပ်တော့ပါ", en: "Cancel" },
+  exitFormTitle: { th: "ออกจากฟอร์มนี้?", my: "ဤဖောင်မှ ထွက်မလား?", en: "Leave this form?" },
+  exitFormDiscard: { th: "ออกและล้างข้อมูล", my: "ထွက်ပြီး ဖျက်ရန်", en: "Leave and discard" },
+  retireTreeTitle: { th: "ปลดระวางต้นไม้นี้?", my: "ဤပင်ကို ပယ်ဖျက်မလား?", en: "Retire this tree?" },
+  reactivateTreeTitle: { th: "เปิดใช้งานอีกครั้ง?", my: "ပြန်လည်အသုံးပြုမလား?", en: "Reactivate this tree?" },
   back: { th: "กลับ", my: "နောက်သို့", en: "Back" },
   appName: { th: "สวนทุเรียน", my: "ဒူးရင်းဥယျာဉ်", en: "Durian Farm" },
 

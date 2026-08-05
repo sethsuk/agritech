@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireStaff } from "@/lib/auth/requireStaff";
 
 /**
  * GET /api/manager/overview?zone=AL&range=week
@@ -27,21 +26,9 @@ function rangeStart(range: Range): Date | null {
 }
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const admin = createAdminClient();
-
-  // Verify manager/owner role
-  const { data: profile } = await admin
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  if (!profile || (profile.role !== "manager" && profile.role !== "owner")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const gate = await requireStaff();
+  if (!gate.ok) return gate.response;
+  const { admin } = gate;
 
   const { searchParams } = new URL(request.url);
   const rangeParam = searchParams.get("range") ?? "week";

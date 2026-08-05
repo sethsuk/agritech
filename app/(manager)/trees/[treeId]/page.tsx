@@ -10,6 +10,7 @@ import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict, type DictKey } from "@/lib/i18n/dictionary";
 import { KNOWN_VARIETIES, varietyName } from "@/lib/i18n/varieties";
 import { DateInputDMY } from "@/components/DateInputDMY";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { DbTree, DbAlert } from "@/types/database";
 
 interface LogRow {
@@ -29,9 +30,9 @@ interface DetailData {
 }
 
 const statusColor: Record<string, string> = {
-  passed: "text-emerald-600",
-  flagged: "text-amber-600",
-  rejected: "text-red-600",
+  passed: "text-primary-ink",
+  flagged: "text-caution-ink",
+  rejected: "text-warning-ink",
 };
 
 const retireConfirmText: Record<Lang, (treeId: string) => string> = {
@@ -61,6 +62,7 @@ export default function ManagerTreeDetailPage() {
   const [capturingGps, setCapturingGps] = useState(false);
   const [saving, setSaving] = useState(false);
   const [retiring, setRetiring] = useState(false);
+  const [confirmRetire, setConfirmRetire] = useState(false);
 
   const tr = (key: DictKey) => t(dict[key], lang);
 
@@ -132,12 +134,13 @@ export default function ManagerTreeDetailPage() {
 
   async function handleRetireToggle() {
     if (!data) return;
-    const retiring_ = data.tree.status === "active";
-    const message = retiring_
-      ? retireConfirmText[lang](treeId)
-      : reactivateConfirmText[lang](treeId);
-    if (!window.confirm(message)) return;
+    setConfirmRetire(true);
+  }
 
+  async function doRetireToggle() {
+    if (!data) return;
+    const retiring_ = data.tree.status === "active";
+    setConfirmRetire(false);
     setRetiring(true);
     try {
       const res = await fetch(`/api/manager/trees/${treeId}`, {
@@ -161,14 +164,14 @@ export default function ManagerTreeDetailPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-6">
-        <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />
+        <div className="h-40 animate-pulse rounded-lg bg-surface-alt" />
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-6 text-center text-slate-400">
+      <div className="mx-auto max-w-2xl px-4 py-6 text-center text-muted">
         {tr("treeNotFound")}
       </div>
     );
@@ -179,31 +182,31 @@ export default function ManagerTreeDetailPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
-        <Link href="/trees" className="text-sm text-slate-400">‹ {tr("back")}</Link>
+        <Link href="/trees" className="inline-flex min-h-11 items-center text-sm text-muted sm:min-h-0">‹ {tr("back")}</Link>
         {tree.status === "retired" && (
-          <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-medium text-slate-600">
+          <span className="rounded-full bg-surface-press px-3 py-1 text-xs font-semibold text-body">
             {tr("retiredBadge")}
           </span>
         )}
       </div>
 
-      <div className="mb-4 rounded-2xl bg-white p-5 shadow-sm">
+      <div className="mb-4 rounded-lg bg-surface p-5 border border-line">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="font-mono text-2xl font-bold text-slate-900">{tree.tree_id}</h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <h1 className="font-mono text-2xl font-bold text-ink">{tree.tree_id}</h1>
+            <p className="mt-1 text-sm text-muted">
               {tr("zoneLabel")} {tree.zone}{tree.side} · {tr("rowLabel")} {tree.row_num} · {tr("columnLabel")} {tree.position}
             </p>
           </div>
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+          <span className="rounded-full bg-primary-tint px-3 py-1 text-xs font-semibold text-primary-ink">
             {Math.round(Number(tree.derived_health_score) * 100)}%
           </span>
         </div>
 
         {openAlerts.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
             {openAlerts.map((a) => (
-              <span key={a.alert_id} className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
+              <span key={a.alert_id} className="rounded-full bg-warning-tint px-2 py-1 text-xs font-semibold text-warning-ink">
                 🔔 {a.subtype}
               </span>
             ))}
@@ -212,22 +215,22 @@ export default function ManagerTreeDetailPage() {
 
         <button
           onClick={() => downloadTreeQrLabel(tree.tree_id, tree.qr_code)}
-          className="mt-4 h-11 w-full rounded-xl bg-slate-100 text-sm font-medium text-slate-700 active:bg-slate-200"
+          className="mt-4 h-11 w-full rounded-lg bg-surface-alt text-sm font-semibold text-body active:bg-surface-press"
         >
           📥 {tr("downloadQr")}
         </button>
       </div>
 
       {/* Edit form */}
-      <form onSubmit={handleSave} className="mb-4 space-y-4 rounded-2xl bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-700">{tr("editInfoTitle")}</h2>
+      <form onSubmit={handleSave} className="mb-4 space-y-4 rounded-lg bg-surface p-5 border border-line">
+        <h2 className="text-sm font-semibold text-body">{tr("editInfoTitle")}</h2>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("colVariety")}</label>
+          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("colVariety")}</label>
           <select
             value={varietyChoice}
             onChange={(e) => setVarietyChoice(e.target.value)}
-            className="h-12 w-full rounded-xl border border-slate-300 px-4 text-base focus:border-emerald-500 focus:outline-none"
+            className="h-12 w-full rounded-lg border border-line px-4 text-base focus:border-primary focus:outline-none"
           >
             {/* value stays the canonical romanized name; only the label is translated */}
             {KNOWN_VARIETIES.map((v) => (
@@ -242,27 +245,27 @@ export default function ManagerTreeDetailPage() {
               onChange={(e) => setCustomVariety(e.target.value)}
               placeholder={tr("customVarietyPlaceholder")}
               required
-              className="mt-2 h-12 w-full rounded-xl border border-slate-300 px-4 text-base focus:border-emerald-500 focus:outline-none"
+              className="mt-2 h-12 w-full rounded-lg border border-line px-4 text-base focus:border-primary focus:outline-none"
             />
           )}
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("plantedDateLabel")}</label>
+          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("plantedDateLabel")}</label>
           <DateInputDMY value={plantedDate} onChange={setPlantedDate} required />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("gpsLocationLabel")}</label>
-          <p className="mb-2 text-xs text-slate-400">
+          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("gpsLocationLabel")}</label>
+          <p className="mb-2 text-xs text-muted">
             {tr("currentPrefix")}: {Number(tree.lat).toFixed(6)}, {Number(tree.long).toFixed(6)}
           </p>
           <button
             type="button"
             onClick={captureGps}
             disabled={capturingGps}
-            className={`h-12 w-full rounded-xl text-sm font-medium ${
-              gpsOverride ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+            className={`h-12 w-full rounded-lg text-sm font-semibold ${
+              gpsOverride ? "bg-primary-tint text-primary-ink" : "bg-surface-alt text-body"
             } disabled:opacity-50`}
           >
             {capturingGps
@@ -276,28 +279,28 @@ export default function ManagerTreeDetailPage() {
         <button
           type="submit"
           disabled={saving}
-          className="h-12 w-full rounded-xl bg-emerald-600 text-base font-semibold text-white active:bg-emerald-700 disabled:bg-slate-300"
+          className="h-12 w-full rounded-lg bg-primary text-base font-semibold text-white active:bg-primary-press disabled:bg-surface-press"
         >
           {saving ? tr("submitting") : tr("saveEditsButton")}
         </button>
       </form>
 
       {/* Recent logs */}
-      <div className="mb-4 rounded-2xl bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-slate-700">{tr("recentLogsTitle")}</h2>
+      <div className="mb-4 rounded-lg bg-surface p-5 border border-line">
+        <h2 className="mb-3 text-sm font-semibold text-body">{tr("recentLogsTitle")}</h2>
         {recentLogs.length === 0 ? (
-          <p className="text-sm text-slate-400">{tr("noLogsYet")}</p>
+          <p className="text-sm text-muted">{tr("noLogsYet")}</p>
         ) : (
           <div className="space-y-2">
             {recentLogs.map((log) => (
-              <div key={log.log_id} className="flex items-center justify-between border-b border-slate-50 pb-2 text-sm last:border-0">
+              <div key={log.log_id} className="flex items-center justify-between border-b border-line pb-2 text-sm last:border-0">
                 <div>
-                  <p className="font-medium text-slate-800">{log.task_type}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="font-semibold text-ink">{log.task_type}</p>
+                  <p className="text-xs text-muted">
                     {log.workers?.users?.display_name ?? "—"} · {new Date(log.submitted_at).toLocaleString("th-TH")}
                   </p>
                 </div>
-                <span className={`text-xs font-medium ${statusColor[log.validation_status] ?? "text-slate-400"}`}>
+                <span className={`text-xs font-semibold ${statusColor[log.validation_status] ?? "text-muted"}`}>
                   {log.validation_status}
                 </span>
               </div>
@@ -310,14 +313,28 @@ export default function ManagerTreeDetailPage() {
       <button
         onClick={handleRetireToggle}
         disabled={retiring}
-        className={`h-12 w-full rounded-xl text-sm font-medium ${
+        className={`h-12 w-full rounded-lg text-sm font-semibold ${
           tree.status === "active"
-            ? "bg-red-50 text-red-600 active:bg-red-100"
-            : "bg-emerald-50 text-emerald-700 active:bg-emerald-100"
+            ? "bg-warning-tint text-warning-ink active:bg-warning-tint"
+            : "bg-primary-tint text-primary-ink active:bg-primary-tint"
         } disabled:opacity-50`}
       >
         {tree.status === "active" ? tr("retireTreeButton") : tr("reactivateTreeButton")}
       </button>
+
+      <ConfirmDialog
+        open={confirmRetire}
+        title={tree.status === "active" ? tr("retireTreeTitle") : tr("reactivateTreeTitle")}
+        message={
+          tree.status === "active"
+            ? retireConfirmText[lang](treeId)
+            : reactivateConfirmText[lang](treeId)
+        }
+        confirmLabel={tree.status === "active" ? tr("retireTreeButton") : tr("reactivateTreeButton")}
+        destructive={tree.status === "active"}
+        onConfirm={doRetireToggle}
+        onCancel={() => setConfirmRetire(false)}
+      />
     </div>
   );
 }

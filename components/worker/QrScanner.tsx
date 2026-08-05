@@ -72,19 +72,19 @@ export function QrScanner({ onDecode, onUnavailable }: Props) {
 
   if (status === "unavailable") {
     return (
-      <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 p-6 text-center">
+      <div className="rounded-lg border-2 border-dashed border-caution bg-caution-tint p-6 text-center">
         <div className="text-3xl">📷</div>
-        <p className="mt-2 font-medium text-amber-900">{t(dict.cameraUnavailableTitle, lang)}</p>
-        <p className="mt-1 text-sm text-amber-800">{t(dict.cameraUnavailableHint, lang)}</p>
+        <p className="mt-2 font-semibold text-caution-ink">{t(dict.cameraUnavailableTitle, lang)}</p>
+        <p className="mt-1 text-lg text-caution-ink">{t(dict.cameraUnavailableHint, lang)}</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-black">
+    <div className="overflow-hidden rounded-lg bg-black">
       <div id={REGION_ID} className="aspect-square w-full" />
       {status === "loading" && (
-        <div className="bg-black p-4 text-center text-sm text-white/70">{t(dict.cameraLoading, lang)}</div>
+        <div className="bg-black p-4 text-center text-lg text-white/70">{t(dict.cameraLoading, lang)}</div>
       )}
     </div>
   );

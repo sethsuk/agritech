@@ -62,7 +62,7 @@ export default function ScanPage() {
       <WorkerHeader variant="home" />
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-6">
-        <p className="mb-4 text-sm text-slate-500">{tr("scanPrompt")}</p>
+        <p className="mb-4 text-lg text-muted">{tr("scanPrompt")}</p>
         <div className="flex-1 space-y-4">
         <QrScanner
           onDecode={handleQrDecode}
@@ -70,15 +70,15 @@ export default function ScanPage() {
         />
 
         {checking && (
-          <div className="rounded-2xl bg-emerald-50 p-4 text-center text-sm text-emerald-700">
+          <div className="rounded-lg bg-primary-tint p-4 text-center text-lg text-primary-ink">
             {tr("scanning")}
           </div>
         )}
 
         <div className="relative flex items-center py-2">
-          <div className="flex-1 border-t border-slate-200" />
-          <span className="mx-3 text-xs text-slate-400">{tr("scanOr")}</span>
-          <div className="flex-1 border-t border-slate-200" />
+          <div className="flex-1 border-t border-line" />
+          <span className="mx-3 text-base text-muted">{tr("scanOr")}</span>
+          <div className="flex-1 border-t border-line" />
         </div>
 
         <form onSubmit={handleManualSubmit} className="flex gap-2">
@@ -87,12 +87,12 @@ export default function ScanPage() {
             value={manualId}
             onChange={(e) => setManualId(e.target.value)}
             placeholder="A-001"
-            className="h-12 flex-1 rounded-xl border border-slate-300 px-4 text-base uppercase focus:border-emerald-500 focus:outline-none"
+            className="h-12 flex-1 rounded-lg border border-line px-4 text-base uppercase focus:border-primary focus:outline-none"
           />
           <button
             type="submit"
             disabled={!manualId.trim() || checking}
-            className="h-12 rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white disabled:bg-slate-300"
+            className="h-12 rounded-lg bg-primary px-5 text-lg font-semibold text-white disabled:bg-surface-press"
           >
             {tr("scanSearch")}
           </button>
