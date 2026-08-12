@@ -110,8 +110,14 @@ Left-align body copy. No all-caps except short button labels. No italics at smal
   can be dismissed by an accidental gloved touch.
 - **No hamburger menus, no hidden gestures.** Visible bottom tab bar, ≤4 items.
 - **Disabled** stays conventionally faded.
-- **Language toggle** appears on the login page and the worker home (`/scan`)
-  only — three 60px pills do not fit alongside a back button and title.
+- **Language toggle** appears on the login page, worker home (`/scan`), and the
+  worker tree screen — the point right after scanning, where someone who landed
+  in a language they can't read most needs to fix it. On the tree screen it sits
+  on its own row (`showLanguageToggle` on `WorkerHeader`), because three 60px
+  pills cannot share a row with a back button, title and logout at 375px. It is
+  deliberately absent from the task form, which is mid-data-entry and one tap
+  from the tree screen. `<LanguageToggle size="worker" />` gives the 60px field
+  target; the default 44px is for manager chrome.
 
 ## Internationalization
 

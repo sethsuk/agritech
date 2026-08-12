@@ -40,7 +40,7 @@ export default function LoginPage() {
     <main className="flex min-h-dvh flex-col items-center justify-center bg-primary-tint px-4">
       <div className="w-full max-w-sm">
         <div className="mb-4 flex justify-center">
-          <LanguageToggle />
+          <LanguageToggle size="worker" />
         </div>
 
         <div className="mb-8 text-center">

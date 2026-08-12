@@ -78,6 +78,7 @@ export default function TreeDetailPage() {
         variant="back"
         title={`${tr("treeTitlePrefix")} ${tree.tree_id}`}
         onBack={() => router.push("/scan")}
+        showLanguageToggle
       />
 
       <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
