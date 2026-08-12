@@ -10,18 +10,21 @@ type Props = {
   onChange: (v: string) => void;
 };
 
+// Ribbon colors are domain data (the physical ribbon on the tree), not UI
+// semantics — hence the dedicated --color-ribbon-* tokens. They are always drawn
+// as a round swatch so they can never be confused with a status badge.
 const colorRing: Record<string, string> = {
-  red: "ring-red-400",
-  blue: "ring-blue-400",
-  yellow: "ring-yellow-400",
-  white: "ring-slate-300",
+  red: "ring-ribbon-red",
+  blue: "ring-ribbon-blue",
+  yellow: "ring-ribbon-yellow",
+  white: "ring-line",
 };
 
 const colorBg: Record<string, string> = {
-  red: "bg-red-400",
-  blue: "bg-blue-400",
-  yellow: "bg-yellow-400",
-  white: "bg-slate-100",
+  red: "bg-ribbon-red",
+  blue: "bg-ribbon-blue",
+  yellow: "bg-ribbon-yellow",
+  white: "bg-ribbon-white",
 };
 
 export function ColorPicker({ options, value, onChange }: Props) {
@@ -33,18 +36,18 @@ export function ColorPicker({ options, value, onChange }: Props) {
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
-          className={`flex flex-col items-center gap-1.5 rounded-2xl p-3 transition ${
+          className={`flex flex-col items-center gap-1.5 rounded-lg p-3 transition ${
             value === opt.value
-              ? `ring-4 ${colorRing[opt.value] ?? "ring-emerald-400"} bg-white shadow-sm`
-              : "bg-slate-50"
+              ? `ring-4 ${colorRing[opt.value] ?? "ring-primary"} bg-surface border border-line`
+              : "bg-surface-alt"
           }`}
         >
           <div
-            className={`h-10 w-10 rounded-full ${colorBg[opt.value] ?? "bg-slate-300"} ${
-              opt.value === "white" ? "border border-slate-300" : ""
+            className={`h-10 w-10 rounded-full ${colorBg[opt.value] ?? "bg-surface-press"} ${
+              opt.value === "white" ? "border border-line" : ""
             }`}
           />
-          <span className="text-xs font-medium text-slate-700">{opt.icon} {t(opt.label, lang)}</span>
+          <span className="text-base font-semibold text-body">{opt.icon} {t(opt.label, lang)}</span>
         </button>
       ))}
     </div>

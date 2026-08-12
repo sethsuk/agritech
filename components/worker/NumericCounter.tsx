@@ -74,7 +74,7 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
         type="button"
         onClick={decrement}
         disabled={value === null || value <= min}
-        className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl font-bold text-slate-700 active:bg-slate-200 disabled:opacity-30"
+        className="flex h-15 w-15 items-center justify-center rounded-lg border border-line bg-surface-alt text-2xl font-bold text-body active:bg-surface-press disabled:opacity-30"
       >
         −
       </button>
@@ -83,7 +83,7 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
         <button
           type="button"
           onClick={initialize}
-          className="h-14 w-28 rounded-2xl border-2 border-dashed border-slate-300 text-center text-sm text-slate-400"
+          className="h-15 w-28 rounded-lg border-2 border-dashed border-line text-center text-lg text-muted"
         >
 {t(dict.numericTapToSet, lang)}
         </button>
@@ -96,7 +96,7 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
           step={step}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commitDraft}
-          className="h-14 w-28 rounded-2xl border border-slate-200 text-center text-2xl font-bold text-slate-900 focus:border-emerald-500 focus:outline-none [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+          className="h-15 w-28 rounded-lg border border-line text-center text-2xl font-bold text-ink focus:border-primary focus:outline-none [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
         />
       )}
 
@@ -104,7 +104,9 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
         type="button"
         onClick={increment}
         disabled={value !== null && value >= max}
-        className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-2xl font-bold text-emerald-700 active:bg-emerald-200 disabled:opacity-30"
+        // Solid primary: increment is the dominant action, and a solid vs outlined
+        // pair stays distinguishable in direct sunlight where two pale fills would not.
+        className="flex h-15 w-15 items-center justify-center rounded-lg bg-primary text-2xl font-bold text-white active:bg-primary-press disabled:opacity-30"
       >
         +
       </button>

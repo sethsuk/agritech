@@ -87,7 +87,7 @@ export function DateInputDMY({ value, onChange, required }: Props) {
       required={required}
       value={text}
       onChange={handleChange}
-      className="h-12 w-full rounded-xl border border-slate-300 px-4 text-base focus:border-emerald-500 focus:outline-none"
+      className="h-12 w-full rounded-lg border border-line px-4 text-base focus:border-primary focus:outline-none"
     />
   );
 }

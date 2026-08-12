@@ -18,11 +18,11 @@ type Props = {
 
 function FieldWrapper({ field, lang, children }: { field: TaskField; lang: Lang; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm">
-      <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
+    <div className="rounded-lg bg-surface p-4 border border-line">
+      <label className="mb-3 flex items-center gap-2 text-lg font-semibold text-body">
         <span>{field.label_icon}</span>
         <span>{t(field.label, lang)}</span>
-        {field.required && <span className="text-red-400">*</span>}
+        {field.required && <span className="text-warning-ink">*</span>}
       </label>
       {children}
     </div>
@@ -50,12 +50,12 @@ export function TaskFormRenderer({ fields, formData, onChange }: Props) {
                 onChange={(v) => onChange(field.field_id, v)}
               />
               {field.warn_below !== undefined && numValue !== null && numValue < field.warn_below && (
-                <p className="mt-2 text-xs text-amber-600">
+                <p className="mt-2 text-base text-caution-ink">
                   ⚠️ {t(dict.warnBelow, lang)} ({field.warn_below})
                 </p>
               )}
               {field.warn_above !== undefined && numValue !== null && numValue > field.warn_above && (
-                <p className="mt-2 text-xs text-amber-600">
+                <p className="mt-2 text-base text-caution-ink">
                   ⚠️ {t(dict.warnAbove, lang)} ({field.warn_above})
                 </p>
               )}

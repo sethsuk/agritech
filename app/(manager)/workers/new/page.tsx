@@ -100,28 +100,28 @@ export default function NewWorkerPage() {
   if (created) {
     return (
       <div className="mx-auto max-w-md px-4 py-6">
-        <div className="rounded-2xl bg-white p-6 text-center shadow-sm">
+        <div className="rounded-lg bg-surface p-6 text-center border border-line">
           <div className="mb-3 text-5xl">✅</div>
-          <h1 className="text-xl font-bold text-slate-900">{tr("accountCreatedTitle")}</h1>
-          <p className="mt-1 text-slate-700">{created.displayName}</p>
+          <h1 className="text-xl font-bold text-ink">{tr("accountCreatedTitle")}</h1>
+          <p className="mt-1 text-body">{created.displayName}</p>
 
-          <div className="mt-4 space-y-2 rounded-xl bg-slate-50 p-4 text-left">
+          <div className="mt-4 space-y-2 rounded-lg bg-surface-alt p-4 text-left">
             <div>
-              <p className="text-xs text-slate-400">{tr("loginEmailLabel")}</p>
-              <p className="font-mono text-sm text-slate-800">{created.email}</p>
+              <p className="text-xs text-muted">{tr("loginEmailLabel")}</p>
+              <p className="font-mono text-sm text-ink">{created.email}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">{tr("passwordFieldLabel")}</p>
-              <p className="font-mono text-sm text-slate-800">{created.password}</p>
+              <p className="text-xs text-muted">{tr("passwordFieldLabel")}</p>
+              <p className="font-mono text-sm text-ink">{created.password}</p>
             </div>
           </div>
-          <p className="mt-2 text-xs text-slate-400">
+          <p className="mt-2 text-xs text-muted">
             {tr("credentialsWarningHint")}
           </p>
 
           <button
             onClick={copyCredentials}
-            className="mt-6 h-12 w-full rounded-xl bg-emerald-600 text-sm font-semibold text-white active:bg-emerald-700"
+            className="mt-6 h-12 w-full rounded-lg bg-primary text-sm font-semibold text-white active:bg-primary-press"
           >
             {copied ? tr("copiedButton") : tr("copyCredentialsButton")}
           </button>
@@ -129,13 +129,13 @@ export default function NewWorkerPage() {
           <div className="mt-3 flex gap-2">
             <button
               onClick={resetForm}
-              className="h-12 flex-1 rounded-xl bg-slate-100 text-sm font-medium text-slate-600 active:bg-slate-200"
+              className="h-12 flex-1 rounded-lg bg-surface-alt text-sm font-semibold text-body active:bg-surface-press"
             >
               {tr("addAnotherWorker")}
             </button>
             <Link
               href="/workers"
-              className="flex h-12 flex-1 items-center justify-center rounded-xl bg-slate-100 text-sm font-medium text-slate-600 active:bg-slate-200"
+              className="flex h-12 flex-1 items-center justify-center rounded-lg bg-surface-alt text-sm font-semibold text-body active:bg-surface-press"
             >
               {tr("goToWorkersList")}
             </Link>
@@ -148,68 +148,68 @@ export default function NewWorkerPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-6">
       <div className="mb-4 flex items-center gap-2">
-        <Link href="/workers" className="text-sm text-slate-400">‹ {tr("back")}</Link>
+        <Link href="/workers" className="inline-flex min-h-11 items-center text-sm text-muted sm:min-h-0">‹ {tr("back")}</Link>
       </div>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">{tr("newWorkerTitle")}</h1>
+      <h1 className="mb-6 text-2xl font-bold text-ink">{tr("newWorkerTitle")}</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl bg-white p-5 shadow-sm">
+      <form onSubmit={handleSubmit} className="space-y-4 rounded-lg bg-surface p-5 border border-line">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("colName")}</label>
+          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("colName")}</label>
           <input
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder="U Aung"
             required
-            className="h-12 w-full rounded-xl border border-slate-300 px-4 text-base focus:border-emerald-500 focus:outline-none"
+            className="h-12 w-full rounded-lg border border-line px-4 text-base focus:border-primary focus:outline-none"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("usernameLabel")}</label>
+          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("usernameLabel")}</label>
           <input
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="worker4"
             required
-            className={`h-12 w-full rounded-xl border px-4 text-base focus:outline-none ${
-              usernameValid ? "border-slate-300 focus:border-emerald-500" : "border-red-400"
+            className={`h-12 w-full rounded-lg border px-4 text-base focus:outline-none ${
+              usernameValid ? "border-line focus:border-primary" : "border-warning"
             }`}
           />
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-muted">
             {lang === "th"
               ? `ใช้เข้าสู่ระบบเป็น ${usernameTrimmed || "worker4"}@farm.local — ใช้ตัวอักษร a-z, ตัวเลข, . _ - เท่านั้น`
               : lang === "my"
               ? `${usernameTrimmed || "worker4"}@farm.local ဖြင့် လော့ဂ်အင်ဝင်ပါမည် — a-z, ဂဏန်း, . _ - သာ အသုံးပြုပါ`
               : `Logs in as ${usernameTrimmed || "worker4"}@farm.local — letters a-z, digits, . _ - only`}
           </p>
-          {!usernameValid && <p className="mt-1 text-xs text-red-500">{tr("invalidFormat")}</p>}
+          {!usernameValid && <p className="mt-1 text-xs text-warning-ink">{tr("invalidFormat")}</p>}
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("passwordFieldLabel")}</label>
+          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("passwordFieldLabel")}</label>
           <input
             type="text"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="1111"
             required
-            className="h-12 w-full rounded-xl border border-slate-300 px-4 text-base focus:border-emerald-500 focus:outline-none"
+            className="h-12 w-full rounded-lg border border-line px-4 text-base focus:border-primary focus:outline-none"
           />
-          <p className="mt-1 text-xs text-slate-400">{tr("minPasswordHint")}</p>
+          <p className="mt-1 text-xs text-muted">{tr("minPasswordHint")}</p>
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("languageFieldLabel")}</label>
+          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("languageFieldLabel")}</label>
           <div className="flex gap-2">
             {LANGUAGES.map((l) => (
               <button
                 key={l.value}
                 type="button"
                 onClick={() => setLanguage(l.value)}
-                className={`h-12 flex-1 rounded-xl text-sm font-medium ${
-                  language === l.value ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600"
+                className={`h-12 flex-1 rounded-lg text-sm font-semibold ${
+                  language === l.value ? "bg-primary text-white" : "bg-surface-alt text-body"
                 }`}
               >
                 {l.label}
@@ -220,23 +220,23 @@ export default function NewWorkerPage() {
 
         {/* Workers currently see all zones — no zone input at creation.
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">{tr("zonesResponsibleLabel")}</label>
+          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("zonesResponsibleLabel")}</label>
           <input
             type="text"
             value={zones}
             onChange={(e) => setZones(e.target.value)}
             placeholder="A"
             required
-            className="h-12 w-full rounded-xl border border-slate-300 px-4 text-base uppercase focus:border-emerald-500 focus:outline-none"
+            className="h-12 w-full rounded-lg border border-line px-4 text-base uppercase focus:border-primary focus:outline-none"
           />
-          <p className="mt-1 text-xs text-slate-400">{tr("zonesHint")}</p>
+          <p className="mt-1 text-xs text-muted">{tr("zonesHint")}</p>
         </div>
         */}
 
         <button
           type="submit"
           disabled={!canSubmit}
-          className="h-12 w-full rounded-xl bg-emerald-600 text-base font-semibold text-white transition active:bg-emerald-700 disabled:bg-slate-300"
+          className="h-12 w-full rounded-lg bg-primary text-base font-semibold text-white transition active:bg-primary-press disabled:bg-surface-press"
         >
           {submitting ? tr("creatingAccount") : tr("createAccountButton")}
         </button>

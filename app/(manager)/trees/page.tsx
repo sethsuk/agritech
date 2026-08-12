@@ -45,15 +45,15 @@ export default async function TreesPage({
   ).sort();
 
   const healthColor = (score: number) => {
-    if (score >= 0.8) return "text-emerald-600";
-    if (score >= 0.5) return "text-amber-600";
-    return "text-red-600";
+    if (score >= 0.8) return "text-primary-ink";
+    if (score >= 0.5) return "text-caution-ink";
+    return "text-warning-ink";
   };
 
   const healthBg = (score: number) => {
-    if (score >= 0.8) return "bg-emerald-50 text-emerald-700";
-    if (score >= 0.5) return "bg-amber-50 text-amber-700";
-    return "bg-red-50 text-red-700";
+    if (score >= 0.8) return "bg-primary-tint text-primary-ink";
+    if (score >= 0.5) return "bg-caution-tint text-caution-ink";
+    return "bg-warning-tint text-warning-ink";
   };
 
   return (
@@ -61,21 +61,21 @@ export default async function TreesPage({
       {/* Header + zone filter */}
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h1 className="mb-3 text-2xl font-bold text-slate-900"><T k="navTrees" /> ({trees?.length ?? 0})</h1>
+          <h1 className="mb-3 text-2xl font-bold text-ink"><T k="navTrees" /> ({trees?.length ?? 0})</h1>
           <div className="flex flex-wrap gap-2">
             {zones.map((z) => (
               <Link
                 key={z}
                 href={`/trees?zone=${z}`}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-                  zoneFilter === z ? "bg-emerald-600 text-white" : "bg-white text-slate-600 shadow-sm"
+                className={`inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-semibold sm:min-h-0 sm:py-1.5 ${
+                  zoneFilter === z ? "bg-primary text-white" : "bg-surface text-body border border-line"
                 }`}
               >
                 {z}
               </Link>
             ))}
             {zoneFilter && (
-              <Link href="/trees" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-500">
+              <Link href="/trees" className="rounded-lg bg-surface-alt px-3 py-1.5 text-xs text-muted">
                 <T k="clearFilter" />
               </Link>
             )}
@@ -83,7 +83,7 @@ export default async function TreesPage({
         </div>
         <Link
           href="/trees/new"
-          className="flex h-10 flex-shrink-0 items-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white active:bg-emerald-700"
+          className="flex h-11 flex-shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-white active:bg-primary-press"
         >
           <T k="addTreeButton" />
         </Link>
@@ -95,16 +95,16 @@ export default async function TreesPage({
           <Link
             key={tree.tree_id}
             href={`/trees/${tree.tree_id}`}
-            className="block rounded-2xl bg-white p-4 shadow-sm active:bg-slate-50"
+            className="block rounded-lg bg-surface p-4 border border-line active:bg-surface-alt"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-mono font-semibold text-slate-900">{tree.tree_id}</p>
-                <p className="text-xs text-slate-500">{tree.zone}{tree.side} · <VarietyName variety={tree.variety} /></p>
+                <p className="font-mono font-semibold text-ink">{tree.tree_id}</p>
+                <p className="text-xs text-muted">{tree.zone}{tree.side} · <VarietyName variety={tree.variety} /></p>
               </div>
               <div className="flex items-center gap-2">
                 {Number(tree.derived_open_alerts) > 0 && (
-                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                  <span className="rounded-full bg-warning-tint px-2 py-0.5 text-xs font-semibold text-warning-ink">
                     🔔 {tree.derived_open_alerts}
                   </span>
                 )}
@@ -114,7 +114,7 @@ export default async function TreesPage({
                 <TreeQrDownloadButton treeId={tree.tree_id} qrCode={tree.qr_code} />
               </div>
             </div>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-muted">
               <T k="recentLogsTitle" />: {tree.derived_days_since_last_log !== null
                 ? <>{tree.derived_days_since_last_log} <T k="daysAgoSuffix" /></>
                 : <T k="neverLoggedYet" />}
@@ -122,49 +122,49 @@ export default async function TreesPage({
           </Link>
         ))}
         {(!trees || trees.length === 0) && (
-          <div className="rounded-2xl bg-white p-8 text-center text-slate-400 shadow-sm"><T k="noTreesFound" /></div>
+          <div className="rounded-lg bg-surface p-8 text-center text-muted border border-line"><T k="noTreesFound" /></div>
         )}
       </div>
 
       {/* Desktop: table */}
-      <div className="hidden overflow-hidden rounded-2xl bg-white shadow-sm sm:block">
+      <div className="hidden overflow-hidden rounded-lg bg-surface border border-line sm:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
-              <th className="px-4 py-3 font-medium"><T k="colTreeIdLabel" /></th>
-              <th className="px-4 py-3 font-medium"><T k="zoneLabel" /></th>
-              <th className="px-4 py-3 font-medium"><T k="colVariety" /></th>
-              <th className="px-4 py-3 font-medium"><T k="colHealth" /></th>
-              <th className="px-4 py-3 font-medium"><T k="recentLogsTitle" /></th>
-              <th className="px-4 py-3 font-medium"><T k="navAlerts" /></th>
-              <th className="px-4 py-3 font-medium"></th>
+            <tr className="border-b border-line text-left text-xs text-muted">
+              <th className="px-4 py-3 font-semibold"><T k="colTreeIdLabel" /></th>
+              <th className="px-4 py-3 font-semibold"><T k="zoneLabel" /></th>
+              <th className="px-4 py-3 font-semibold"><T k="colVariety" /></th>
+              <th className="px-4 py-3 font-semibold"><T k="colHealth" /></th>
+              <th className="px-4 py-3 font-semibold"><T k="recentLogsTitle" /></th>
+              <th className="px-4 py-3 font-semibold"><T k="navAlerts" /></th>
+              <th className="px-4 py-3 font-semibold"></th>
             </tr>
           </thead>
           <tbody>
             {trees?.map((tree) => (
-              <tr key={tree.tree_id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
+              <tr key={tree.tree_id} className="border-b border-line last:border-0 hover:bg-surface-alt">
                 <td className="px-4 py-3">
-                  <Link href={`/trees/${tree.tree_id}`} className="font-mono font-medium text-slate-800">
+                  <Link href={`/trees/${tree.tree_id}`} className="font-mono font-semibold text-ink">
                     {tree.tree_id}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-slate-500">{tree.zone}{tree.side}</td>
-                <td className="px-4 py-3 text-slate-500"><VarietyName variety={tree.variety} /></td>
+                <td className="px-4 py-3 text-muted">{tree.zone}{tree.side}</td>
+                <td className="px-4 py-3 text-muted"><VarietyName variety={tree.variety} /></td>
                 <td className={`px-4 py-3 font-semibold ${healthColor(Number(tree.derived_health_score))}`}>
                   {Math.round(Number(tree.derived_health_score) * 100)}%
                 </td>
-                <td className="px-4 py-3 text-slate-500">
+                <td className="px-4 py-3 text-muted">
                   {tree.derived_days_since_last_log !== null
                     ? <>{tree.derived_days_since_last_log} <T k="daysAgoSuffix" /></>
                     : <T k="neverLoggedYet" />}
                 </td>
                 <td className="px-4 py-3">
                   {Number(tree.derived_open_alerts) > 0 ? (
-                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                    <span className="rounded-full bg-warning-tint px-2 py-0.5 text-xs font-semibold text-warning-ink">
                       {tree.derived_open_alerts}
                     </span>
                   ) : (
-                    <span className="text-slate-300">—</span>
+                    <span className="text-muted">—</span>
                   )}
                 </td>
                 <td className="px-4 py-3">
@@ -174,7 +174,7 @@ export default async function TreesPage({
             ))}
             {(!trees || trees.length === 0) && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-400"><T k="noTreesFound" /></td>
+                <td colSpan={7} className="px-4 py-8 text-center text-muted"><T k="noTreesFound" /></td>
               </tr>
             )}
           </tbody>

@@ -10,11 +10,14 @@ type Props = {
   onChange: (v: string) => void;
 };
 
+// Severity escalates through the semantic palette: safe → caution → warning tint
+// → solid warning. Intensity, not hue, carries the ranking.
 const severityColor: Record<string, string> = {
-  none: "bg-emerald-50 ring-emerald-300 text-emerald-800",
-  low: "bg-yellow-50 ring-yellow-300 text-yellow-800",
-  moderate: "bg-orange-50 ring-orange-300 text-orange-800",
-  severe: "bg-red-50 ring-red-400 text-red-800",
+  none: "bg-primary-tint ring-primary text-primary-ink",
+  mild: "bg-caution-tint ring-caution text-caution-ink",
+  low: "bg-caution-tint ring-caution text-caution-ink",
+  moderate: "bg-warning-tint ring-warning text-warning-ink",
+  severe: "bg-warning ring-warning-press text-white",
 };
 
 export function SeverityPicker({ options, value, onChange }: Props) {
@@ -26,14 +29,14 @@ export function SeverityPicker({ options, value, onChange }: Props) {
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
-          className={`flex flex-col items-center gap-2 rounded-2xl p-4 transition ${
+          className={`flex flex-col items-center gap-2 rounded-lg p-4 transition ${
             value === opt.value
-              ? `ring-4 ${severityColor[opt.value] ?? "ring-emerald-300 bg-emerald-50 text-emerald-800"} shadow-sm`
-              : "bg-slate-50 text-slate-700"
+              ? `ring-4 ${severityColor[opt.value] ?? "ring-primary bg-primary-tint text-primary-ink"} border border-line`
+              : "bg-surface-alt text-body"
           }`}
         >
           <span className="text-3xl">{opt.icon}</span>
-          <span className="text-sm font-medium">{t(opt.label, lang)}</span>
+          <span className="text-lg font-semibold">{t(opt.label, lang)}</span>
         </button>
       ))}
     </div>

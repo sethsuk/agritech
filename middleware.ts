@@ -30,9 +30,10 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Public paths (no auth required)
+  // Public paths (no auth required). startsWith, not includes — `includes` would treat
+  // any path merely *containing* "/login" or "/auth" as public.
   const publicPaths = ["/login", "/auth"];
-  const isPublic = publicPaths.some((p) => pathname.includes(p));
+  const isPublic = publicPaths.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   if (!user && !isPublic && !pathname.startsWith("/api")) {
     // Not logged in → send to worker login (default)
