@@ -142,6 +142,16 @@ export const dict = {
   creatingAccount: { th: "กำลังสร้าง...", my: "ဖန်တီးနေသည်...", en: "Creating..." },
   createAccountButton: { th: "สร้างบัญชี", my: "အကောင့် ဖန်တီးရန်", en: "Create account" },
 
+  workerNotFound: { th: "ไม่พบคนงาน", my: "အလုပ်သမားကို မတွေ့ပါ", en: "Worker not found" },
+  workerLoadError: { th: "โหลดข้อมูลคนงานไม่สำเร็จ", my: "အလုပ်သမား အချက်အလက် ရယူ၍မရပါ", en: "Failed to load worker data" },
+  inactiveBadge: { th: "ปิดใช้งานแล้ว", my: "ပိတ်ထားသည်", en: "Deactivated" },
+  deactivateWorkerButton: { th: "🚫 ปิดใช้งานคนงานนี้", my: "🚫 ဤအလုပ်သမားကို ပိတ်ရန်", en: "🚫 Deactivate this worker" },
+  reactivateWorkerButton: { th: "♻️ เปิดใช้งานอีกครั้ง", my: "♻️ ပြန်လည်အသုံးပြုရန်", en: "♻️ Reactivate" },
+  deactivateWorkerTitle: { th: "ปิดใช้งานคนงานนี้?", my: "ဤအလုပ်သမားကို ပိတ်မလား?", en: "Deactivate this worker?" },
+  reactivateWorkerTitle: { th: "เปิดใช้งานคนงานนี้อีกครั้ง?", my: "ဤအလုပ်သမားကို ပြန်လည်အသုံးပြုမလား?", en: "Reactivate this worker?" },
+  deactivatedWorkerToast: { th: "ปิดใช้งานคนงานแล้ว", my: "အလုပ်သမားကို ပိတ်ပြီးပါပြီ", en: "Worker deactivated" },
+  reactivatedWorkerToast: { th: "เปิดใช้งานคนงานแล้ว", my: "အလုပ်သမားကို ပြန်လည်အသုံးပြုပြီးပါပြီ", en: "Worker reactivated" },
+
   filterZoneAll: { th: "ทุกโซน", my: "ဇုန်အားလုံး", en: "All zones" },
   rangeToday: { th: "วันนี้", my: "ယနေ့", en: "Today" },
   rangeWeek: { th: "สัปดาห์นี้", my: "ဒီအပတ်", en: "This week" },

@@ -45,7 +45,11 @@ export default async function WorkersPage() {
         {workers?.map((w) => {
           const name = (w as { users?: { display_name?: string } }).users?.display_name ?? "—";
           return (
-            <div key={w.worker_id} className="rounded-lg bg-surface p-4 border border-line">
+            <Link
+              key={w.worker_id}
+              href={`/workers/${w.worker_id}`}
+              className="block rounded-lg bg-surface p-4 border border-line active:bg-surface-alt"
+            >
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-ink">{name}</p>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${tierColor[w.trust_tier] ?? ""}`}>
@@ -66,7 +70,7 @@ export default async function WorkersPage() {
                     : <T k="noDataYet" />}
                 </span>
               </div>
-            </div>
+            </Link>
           );
         })}
         {(!workers || workers.length === 0) && (
@@ -91,9 +95,11 @@ export default async function WorkersPage() {
           </thead>
           <tbody>
             {workers?.map((w) => (
-              <tr key={w.worker_id} className="border-b border-line last:border-0">
+              <tr key={w.worker_id} className="border-b border-line last:border-0 hover:bg-surface-alt">
                 <td className="px-4 py-3 font-semibold text-ink">
-                  {(w as { users?: { display_name?: string } }).users?.display_name ?? "—"}
+                  <Link href={`/workers/${w.worker_id}`} className="block">
+                    {(w as { users?: { display_name?: string } }).users?.display_name ?? "—"}
+                  </Link>
                 </td>
                 {/* <td className="px-4 py-3 text-muted">{w.assigned_zones.join(", ") || "—"}</td> */}
                 <td className="px-4 py-3 text-muted">{w.reliability_logs_total}</td>
