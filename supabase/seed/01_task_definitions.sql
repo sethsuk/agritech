@@ -13,7 +13,7 @@ VALUES
 -- 1. Fertilizer application
 ('fertilizer_application_v1', 'fertilizer',
  'ใส่ปุ๋ย', 'မြေဩဇာထည့်ခြင်း', 'Fertilizer application', '🌱',
- 'audit_only', TRUE, 12, 20,
+ 'never', TRUE, 12, 20,
  '[
    {"field_id":"fertilizer_type","type":"dropdown","label_icon":"🧪",
     "label":{"th":"ชนิดปุ๋ย","my":"မြေဩဇာအမျိုးအစား","en":"Fertilizer type"},
@@ -32,7 +32,7 @@ VALUES
 -- 2. Watering
 ('watering_v1', 'watering',
  'รดน้ำ', 'ရေလောင်းခြင်း', 'Watering', '💧',
- 'audit_only', TRUE, 8, 15,
+ 'never', TRUE, 8, 15,
  '[
    {"field_id":"duration_minutes","type":"numeric_counter","label_icon":"⏱️",
     "label":{"th":"ระยะเวลา (นาที)","my":"အချိန် (မိနစ်)","en":"Duration (minutes)"},
@@ -43,7 +43,7 @@ VALUES
 -- 3. Bloom logging
 ('bloom_log_v1', 'bloom_log',
  'บันทึกการออกดอก', 'ပန်းပွင့်မှတ်တမ်း', 'Bloom logging', '🌸',
- 'always', TRUE, 15, 25,
+ 'never', TRUE, 15, 25,
  '[
    {"field_id":"color","type":"color_picker","label_icon":"🎨",
     "label":{"th":"สีเชือก","my":"အရောင်","en":"Ribbon color"},
@@ -63,7 +63,7 @@ VALUES
 -- 4. Pest inspection
 ('pest_inspection_v1', 'pest_inspection',
  'ตรวจหาศัตรูพืช', 'ပိုးမွှားစစ်ဆေးခြင်း', 'Pest inspection', '🐛',
- 'always', TRUE, 15, 25,
+ 'never', TRUE, 15, 25,
  '[
    {"field_id":"severity","type":"severity_picker","label_icon":"⚠️",
     "label":{"th":"ความรุนแรง","my":"ပြင်းထန်မှု","en":"Severity"},
@@ -80,7 +80,7 @@ VALUES
 -- 5. Soil acidity check
 ('soil_acidity_check_v1', 'soil_check',
  'ตรวจค่ากรดดิน', 'မြေဆီလွှာစစ်ဆေးခြင်း', 'Soil acidity check', '🧪',
- 'audit_only', TRUE, 15, 25,
+ 'never', TRUE, 15, 25,
  '[
    {"field_id":"ph","type":"numeric_counter","label_icon":"🧪",
     "label":{"th":"ค่า pH","my":"pH တန်ဖိုး","en":"pH"},
@@ -94,7 +94,7 @@ VALUES
 -- 6. Harvest logging
 ('harvest_log_v1', 'harvest',
  'บันทึกการเก็บเกี่ยว', 'ရိတ်သိမ်းမှတ်တမ်း', 'Harvest logging', '🛒',
- 'always', TRUE, 20, 30,
+ 'never', TRUE, 20, 30,
  '[
    {"field_id":"set_color","type":"color_picker","label_icon":"🎨",
     "label":{"th":"สีชุด","my":"အရောင်","en":"Set color"},

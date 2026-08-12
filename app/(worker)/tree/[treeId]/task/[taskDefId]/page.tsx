@@ -184,20 +184,20 @@ export default function TaskFormPage() {
           }
         />
 
-        {/* Photo section */}
-        {startLog.photoRequired && (
-          <div className="rounded-2xl bg-amber-50 p-4">
-            <p className="mb-3 text-sm font-medium text-amber-800">
-              📸 {startLog.photoRequirementReason === "random_audit"
-                ? tr("photoAuditNotice")
-                : tr("photoRequiredNotice")}
-            </p>
-            <PhotoCapture
-              photoUrl={photoUrl}
-              onChange={setPhotoUrl}
-            />
-          </div>
-        )}
+        {/* Photo section — always available; only blocks submission when required */}
+        <div className={`rounded-2xl p-4 ${startLog.photoRequired ? "bg-amber-50" : "bg-slate-50"}`}>
+          <p className={`mb-3 text-sm font-medium ${startLog.photoRequired ? "text-amber-800" : "text-slate-600"}`}>
+            📸 {startLog.photoRequired
+              ? (startLog.photoRequirementReason === "random_audit"
+                  ? tr("photoAuditNotice")
+                  : tr("photoRequiredNotice"))
+              : tr("photoOptionalNotice")}
+          </p>
+          <PhotoCapture
+            photoUrl={photoUrl}
+            onChange={setPhotoUrl}
+          />
+        </div>
 
         {/* Sticky submit */}
         <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
