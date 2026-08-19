@@ -17,6 +17,7 @@ export type AlertCategory = "farm_health" | "fraud_signal" | "inactivity" | "com
 export type AlertStatus = "open" | "reviewed" | "resolved" | "dismissed";
 export type ValidationStatus = "passed" | "flagged" | "rejected";
 export type Severity = "none" | "mild" | "moderate" | "severe";
+export type CorrectionType = "correction" | "void";
 
 export interface I18nString {
   th: string;
@@ -146,6 +147,12 @@ export interface DbTaskLog {
   validation_flags: string[];
   notes_text: string | null;
   created_at: string;
+  // NULL on an original submission. Set on a row that amends an earlier one — see
+  // 012_task_log_corrections.sql. correction_of_log_id always points at the root
+  // log, never at another correction/void.
+  correction_of_log_id: string | null;
+  correction_type: CorrectionType | null;
+  correction_reason: string | null;
 }
 
 export interface DbSet {

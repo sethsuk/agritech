@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { QrScanner } from "@/components/worker/QrScanner";
 import { WorkerHeader } from "@/components/worker/WorkerHeader";
@@ -62,6 +63,14 @@ export default function ScanPage() {
       <WorkerHeader variant="home" />
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-6">
+        <Link
+          href="/my-logs"
+          className="mb-4 flex h-12 items-center justify-center gap-2 rounded-lg border border-line bg-surface text-base font-semibold text-body active:bg-surface-alt"
+        >
+          <span>📋</span>
+          <span>{tr("myLogsNavLabel")}</span>
+        </Link>
+
         <p className="mb-4 text-lg text-muted">{tr("scanPrompt")}</p>
         <div className="flex-1 space-y-4">
         <QrScanner
