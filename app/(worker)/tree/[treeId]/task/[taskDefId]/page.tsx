@@ -7,6 +7,7 @@ import { t, taskDisplayName } from "@/lib/i18n/t";
 import { WorkerHeader } from "@/components/worker/WorkerHeader";
 import { TaskFormRenderer } from "@/components/worker/TaskFormRenderer";
 import { PhotoCapture } from "@/components/worker/PhotoCapture";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict } from "@/lib/i18n/dictionary";
 import { varietyName } from "@/lib/i18n/varieties";
@@ -31,6 +32,7 @@ export default function TaskFormPage() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [confirmExit, setConfirmExit] = useState(false);
 
   const gpsRef = useRef<{ lat: number; long: number } | null>(null);
 
@@ -81,7 +83,10 @@ export default function TaskFormPage() {
 
   function handleBack() {
     const hasInput = Object.keys(formData).length > 0 || photoUrl !== null;
-    if (hasInput && !window.confirm(tr("exitFormConfirm"))) return;
+    if (hasInput) {
+      setConfirmExit(true);
+      return;
+    }
     router.back();
   }
 
@@ -151,7 +156,7 @@ export default function TaskFormPage() {
       <main className="mx-auto max-w-md px-4 py-6">
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+            <div key={i} className="h-24 animate-pulse rounded-lg bg-surface-alt" />
           ))}
         </div>
       </main>
@@ -170,7 +175,7 @@ export default function TaskFormPage() {
 
       <main className="mx-auto w-full max-w-md flex-1 px-4 pt-4 pb-32">
       {/* Tree context */}
-      <p className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+      <p className="mb-4 flex items-center gap-2 text-lg text-muted">
         <span className="text-xl">{taskDef.icon ?? "📋"}</span>
         {tree.tree_id} · {tree.zone}{tree.side} · {varietyName(tree.variety, lang)}
       </p>
@@ -185,8 +190,8 @@ export default function TaskFormPage() {
         />
 
         {/* Photo section — always available; only blocks submission when required */}
-        <div className={`rounded-2xl p-4 ${startLog.photoRequired ? "bg-amber-50" : "bg-slate-50"}`}>
-          <p className={`mb-3 text-sm font-medium ${startLog.photoRequired ? "text-amber-800" : "text-slate-600"}`}>
+        <div className={`rounded-lg p-4 ${startLog.photoRequired ? "bg-caution-tint" : "bg-surface-alt"}`}>
+          <p className={`mb-3 text-lg font-semibold ${startLog.photoRequired ? "text-caution-ink" : "text-body"}`}>
             📸 {startLog.photoRequired
               ? (startLog.photoRequirementReason === "random_audit"
                   ? tr("photoAuditNotice")
@@ -200,12 +205,12 @@ export default function TaskFormPage() {
         </div>
 
         {/* Sticky submit */}
-        <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
+        <div className="fixed inset-x-0 bottom-0 border-t border-line bg-surface p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
           <div className="mx-auto max-w-md">
             <button
               type="submit"
               disabled={submitting}
-              className="h-14 w-full rounded-2xl bg-emerald-600 text-lg font-semibold text-white transition active:bg-emerald-700 disabled:bg-slate-300"
+              className="h-15 w-full rounded-lg bg-primary text-lg font-semibold text-white transition active:bg-primary-press disabled:bg-surface-press"
             >
               {submitting ? tr("submitting") : tr("submitButton")}
             </button>
@@ -213,6 +218,16 @@ export default function TaskFormPage() {
         </div>
       </form>
       </main>
+
+      <ConfirmDialog
+        open={confirmExit}
+        title={tr("exitFormTitle")}
+        message={tr("exitFormConfirm")}
+        confirmLabel={tr("exitFormDiscard")}
+        destructive
+        onConfirm={() => { setConfirmExit(false); router.back(); }}
+        onCancel={() => setConfirmExit(false)}
+      />
     </div>
   );
 }

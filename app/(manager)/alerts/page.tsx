@@ -20,10 +20,12 @@ const categoryIcon: Record<string, string> = {
   compliance: "📋",
 };
 
+// Solid fills for tier 1 and 2. They sit close in hue, so the icon and label —
+// not the colour — are what actually distinguish urgent from moderate.
 const tierBadge: Record<string, string> = {
-  tier_1: "bg-red-100 text-red-700 border border-red-200",
-  tier_2: "bg-amber-100 text-amber-700 border border-amber-200",
-  tier_3: "bg-slate-100 text-slate-600",
+  tier_1: "bg-warning text-white",
+  tier_2: "bg-caution text-white",
+  tier_3: "bg-surface-alt text-body border border-line",
 };
 
 const tierLabelKey: Record<string, DictKey> = {
@@ -79,14 +81,14 @@ export default function AlertsPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">{tr("navAlerts")}</h1>
-        <div className="flex gap-2 rounded-xl bg-slate-100 p-1">
+        <h1 className="text-2xl font-bold text-ink">{tr("navAlerts")}</h1>
+        <div className="flex gap-2 rounded-lg bg-surface-alt p-1">
           {(["open", "resolved", "dismissed"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                statusFilter === s ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              className={`inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold transition sm:min-h-0 sm:py-1.5 ${
+                statusFilter === s ? "bg-surface text-ink border border-line" : "text-muted"
               }`}
             >
               {tr(statusLabelKey[s])}
@@ -98,42 +100,42 @@ export default function AlertsPage() {
       {loading && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+            <div key={i} className="h-24 animate-pulse rounded-lg bg-surface-alt" />
           ))}
         </div>
       )}
 
       {!loading && alerts.length === 0 && (
-        <div className="rounded-2xl bg-white p-10 text-center text-slate-400 shadow-sm">
+        <div className="rounded-lg bg-surface p-10 text-center text-muted border border-line">
           {tr("noAlertsAtAll")}
         </div>
       )}
 
       <div className="space-y-3">
         {alerts.map((alert) => (
-          <div key={alert.alert_id} className="rounded-2xl bg-white p-4 shadow-sm">
+          <div key={alert.alert_id} className="rounded-lg bg-surface p-4 border border-line">
             <div className="flex items-start gap-3">
               <span className="mt-0.5 text-2xl">{categoryIcon[alert.category] ?? "📌"}</span>
 
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${tierBadge[alert.tier]}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${tierBadge[alert.tier]}`}>
                     {tierLabelKey[alert.tier] ? tr(tierLabelKey[alert.tier]) : alert.tier}
                   </span>
-                  <p className="text-sm font-semibold text-slate-800">
+                  <p className="text-sm font-semibold text-ink">
                     {alert.subtype.replace(/_/g, " ")}
                   </p>
                 </div>
 
                 {alert.trees && (
-                  <p className="mt-0.5 text-xs text-slate-500">
+                  <p className="mt-0.5 text-xs text-muted">
                     {tr("treeTitlePrefix")} {alert.trees.tree_id} · {tr("zoneLabel")} {alert.trees.zone} · {varietyName(alert.trees.variety, lang)}
                   </p>
                 )}
                 {alert.workers?.users && (
-                  <p className="text-xs text-slate-500">{tr("navWorkers")}: {alert.workers.users.display_name}</p>
+                  <p className="text-xs text-muted">{tr("navWorkers")}: {alert.workers.users.display_name}</p>
                 )}
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted">
                   {new Date(alert.created_at).toLocaleString("th-TH")}
                 </p>
               </div>
@@ -143,14 +145,14 @@ export default function AlertsPage() {
                   <button
                     onClick={() => updateAlert(alert.alert_id, "resolved")}
                     disabled={updating === alert.alert_id}
-                    className="rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-700 active:bg-emerald-200 disabled:opacity-50"
+                    className="min-h-11 rounded-lg bg-primary-tint px-3 text-xs sm:min-h-0 sm:py-1.5 font-semibold text-primary-ink active:bg-primary-tint disabled:opacity-50"
                   >
                     {tr("statusResolved")}
                   </button>
                   <button
                     onClick={() => updateAlert(alert.alert_id, "dismissed")}
                     disabled={updating === alert.alert_id}
-                    className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 active:bg-slate-200 disabled:opacity-50"
+                    className="min-h-11 rounded-lg bg-surface-alt px-3 text-xs sm:min-h-0 sm:py-1.5 font-semibold text-body active:bg-surface-press disabled:opacity-50"
                   >
                     {tr("dismissAction")}
                   </button>

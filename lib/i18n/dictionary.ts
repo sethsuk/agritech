@@ -13,6 +13,12 @@ export const dict = {
   loginError: { th: "อีเมลหรือรหัสผ่านไม่ถูกต้อง", my: "အီးမေးလ် သို့မဟုတ် စကားဝှက် မှားနေသည်", en: "Invalid email or password" },
 
   logout: { th: "ออกจากระบบ", my: "ထွက်ရန်", en: "Log out" },
+  confirmAction: { th: "ยืนยัน", my: "အတည်ပြုရန်", en: "Confirm" },
+  cancelAction: { th: "ยกเลิก", my: "မလုပ်တော့ပါ", en: "Cancel" },
+  exitFormTitle: { th: "ออกจากฟอร์มนี้?", my: "ဤဖောင်မှ ထွက်မလား?", en: "Leave this form?" },
+  exitFormDiscard: { th: "ออกและล้างข้อมูล", my: "ထွက်ပြီး ဖျက်ရန်", en: "Leave and discard" },
+  retireTreeTitle: { th: "ปลดระวางต้นไม้นี้?", my: "ဤပင်ကို ပယ်ဖျက်မလား?", en: "Retire this tree?" },
+  reactivateTreeTitle: { th: "เปิดใช้งานอีกครั้ง?", my: "ပြန်လည်အသုံးပြုမလား?", en: "Reactivate this tree?" },
   back: { th: "กลับ", my: "နောက်သို့", en: "Back" },
   appName: { th: "สวนทุเรียน", my: "ဒူးရင်းဥယျာဉ်", en: "Durian Farm" },
 
@@ -136,6 +142,16 @@ export const dict = {
   zonesHint: { th: "ตัวอักษรโซน คั่นด้วยจุลภาค เช่น A,B", my: "ဇုန်အက္ခရာများ ကော်မာဖြင့်ခွဲပါ ဥပမာ A,B", en: "Zone letters, comma-separated, e.g. A,B" },
   creatingAccount: { th: "กำลังสร้าง...", my: "ဖန်တီးနေသည်...", en: "Creating..." },
   createAccountButton: { th: "สร้างบัญชี", my: "အကောင့် ဖန်တီးရန်", en: "Create account" },
+
+  workerNotFound: { th: "ไม่พบคนงาน", my: "အလုပ်သမားကို မတွေ့ပါ", en: "Worker not found" },
+  workerLoadError: { th: "โหลดข้อมูลคนงานไม่สำเร็จ", my: "အလုပ်သမား အချက်အလက် ရယူ၍မရပါ", en: "Failed to load worker data" },
+  inactiveBadge: { th: "ปิดใช้งานแล้ว", my: "ပိတ်ထားသည်", en: "Deactivated" },
+  deactivateWorkerButton: { th: "🚫 ปิดใช้งานคนงานนี้", my: "🚫 ဤအလုပ်သမားကို ပိတ်ရန်", en: "🚫 Deactivate this worker" },
+  reactivateWorkerButton: { th: "♻️ เปิดใช้งานอีกครั้ง", my: "♻️ ပြန်လည်အသုံးပြုရန်", en: "♻️ Reactivate" },
+  deactivateWorkerTitle: { th: "ปิดใช้งานคนงานนี้?", my: "ဤအလုပ်သမားကို ပိတ်မလား?", en: "Deactivate this worker?" },
+  reactivateWorkerTitle: { th: "เปิดใช้งานคนงานนี้อีกครั้ง?", my: "ဤအလုပ်သမားကို ပြန်လည်အသုံးပြုမလား?", en: "Reactivate this worker?" },
+  deactivatedWorkerToast: { th: "ปิดใช้งานคนงานแล้ว", my: "အလုပ်သမားကို ပိတ်ပြီးပါပြီ", en: "Worker deactivated" },
+  reactivatedWorkerToast: { th: "เปิดใช้งานคนงานแล้ว", my: "အလုပ်သမားကို ပြန်လည်အသုံးပြုပြီးပါပြီ", en: "Worker reactivated" },
 
   filterZoneAll: { th: "ทุกโซน", my: "ဇုန်အားလုံး", en: "All zones" },
   rangeToday: { th: "วันนี้", my: "ယနေ့", en: "Today" },

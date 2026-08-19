@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireStaff } from "@/lib/auth/requireStaff";
 import { parseTreeId, qrCodeForTreeId } from "@/lib/treeId";
 
 // POST /api/manager/trees — create a new tree. Requires manager or owner role.
@@ -15,20 +14,9 @@ const CreateTreeSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const admin = createAdminClient();
-
-  const { data: profile } = await admin
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  if (!profile || (profile.role !== "manager" && profile.role !== "owner")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const gate = await requireStaff();
+  if (!gate.ok) return gate.response;
+  const { admin } = gate;
 
   const body = await request.json().catch(() => null);
   const parsed = CreateTreeSchema.safeParse(body);

@@ -1,20 +1,19 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireStaff } from "@/lib/auth/requireStaff";
 import type { AlertStatus } from "@/types/database";
 
-// GET /api/manager/alerts — paginated open alerts, newest first.
+// GET /api/manager/alerts — paginated alerts by status, newest first.
 // PATCH /api/manager/alerts — update alert status.
+// Both require manager or owner role.
 
 const ALERT_STATUSES: readonly AlertStatus[] = ["open", "reviewed", "resolved", "dismissed"];
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const gate = await requireStaff();
+  if (!gate.ok) return gate.response;
+  const { admin } = gate;
 
-  const admin = createAdminClient();
   const { searchParams } = new URL(request.url);
   const statusParam = searchParams.get("status");
   const status: AlertStatus = ALERT_STATUSES.includes(statusParam as AlertStatus)
@@ -40,28 +39,32 @@ const PatchSchema = z.object({
 });
 
 export async function PATCH(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const gate = await requireStaff();
+  if (!gate.ok) return gate.response;
+  const { admin, userId } = gate;
 
   const body = await request.json().catch(() => null);
   const parsed = PatchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   const { alertId, status, notes } = parsed.data;
-  const admin = createAdminClient();
 
-  const { error } = await admin
+  const { data: updated, error } = await admin
     .from("alerts")
     .update({
       status,
       resolution_action_taken: status,
-      resolution_resolved_by: user.id,
+      resolution_resolved_by: userId,
       resolution_resolved_at: new Date().toISOString(),
       resolution_notes: notes ?? null,
     })
-    .eq("alert_id", alertId);
+    .eq("alert_id", alertId)
+    .select("alert_id")
+    .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Previously returned ok:true even for an alert_id that matched nothing.
+  if (!updated) return NextResponse.json({ error: "Alert not found" }, { status: 404 });
+
   return NextResponse.json({ ok: true });
 }

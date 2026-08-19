@@ -26,20 +26,29 @@ export default async function ManagerLayout({ children }: { children: ReactNode 
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-slate-50">
+    <div className="flex min-h-dvh flex-col bg-surface-alt">
       {/* Top nav — desktop only */}
-      <nav className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3">
+      <nav className="sticky top-0 z-10 border-b border-line bg-surface px-4 py-3">
         <div className="mx-auto flex max-w-6xl items-center gap-6">
-          <span className="text-lg font-bold text-emerald-700">🌳 <T k="loginTitle" /></span>
+          {/* Wordmark is hidden on mobile — the logo alone identifies the app, and the
+              header has to fit the language toggle, display name and logout button. */}
+          <span className="flex flex-shrink-0 items-center gap-2 text-lg font-bold text-primary-ink">
+            <span>🌳</span>
+            <span className="hidden sm:inline"><T k="loginTitle" /></span>
+          </span>
           <div className="hidden gap-4 sm:flex">
-            <Link href="/dashboard" className="text-sm text-slate-600 hover:text-emerald-700"><T k="navOverview" /></Link>
-            <Link href="/alerts"    className="text-sm text-slate-600 hover:text-emerald-700"><T k="navAlerts" /></Link>
-            <Link href="/workers"   className="text-sm text-slate-600 hover:text-emerald-700"><T k="navWorkers" /></Link>
-            <Link href="/trees"     className="text-sm text-slate-600 hover:text-emerald-700"><T k="navTrees" /></Link>
+            <Link href="/dashboard" className="text-sm text-body hover:text-primary-ink"><T k="navOverview" /></Link>
+            <Link href="/alerts"    className="text-sm text-body hover:text-primary-ink"><T k="navAlerts" /></Link>
+            <Link href="/workers"   className="text-sm text-body hover:text-primary-ink"><T k="navWorkers" /></Link>
+            <Link href="/trees"     className="text-sm text-body hover:text-primary-ink"><T k="navTrees" /></Link>
           </div>
-          <div className="ml-auto flex items-center gap-4">
+          <div className="ml-auto flex items-center gap-3 sm:gap-4">
             <LanguageToggle />
-            <span className="text-sm text-slate-500">{profile.display_name}</span>
+            {/* Name is the least load-bearing item here — drop it on mobile so the
+                toggle and logout stay on one line. */}
+            <span className="hidden whitespace-nowrap text-sm text-muted sm:inline">
+              {profile.display_name}
+            </span>
             <LogoutButton />
           </div>
         </div>
