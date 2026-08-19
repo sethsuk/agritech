@@ -57,6 +57,7 @@ export const dict = {
   submitting: { th: "กำลังบันทึก...", my: "မှတ်တမ်းတင်နေသည်...", en: "Submitting..." },
   photoAuditNotice: { th: "งานนี้ถูกสุ่มตรวจ — ต้องถ่ายรูป", my: "ဤအလုပ်ကို ကျပန်းစစ်ဆေးနေသည် — ဓာတ်ပုံရိုက်ရန် လိုအပ်သည်", en: "This task was randomly selected for audit — photo required" },
   photoRequiredNotice: { th: "งานนี้ต้องถ่ายรูป", my: "ဤအလုပ်အတွက် ဓာတ်ပုံရိုက်ရန် လိုအပ်သည်", en: "This task requires a photo" },
+  photoOptionalNotice: { th: "ถ่ายรูปประกอบ (ไม่บังคับ)", my: "ဓာတ်ပုံရိုက်ရန် (မဖြစ်မနေ မလိုပါ)", en: "Attach a photo (optional)" },
 
   photoTake: { th: "📸 ถ่ายรูป", my: "📸 ဓာတ်ပုံရိုက်ရန်", en: "📸 Take photo" },
   photoUploading: { th: "กำลังอัปโหลด...", my: "အပ်လုဒ်တင်နေသည်...", en: "Uploading..." },
