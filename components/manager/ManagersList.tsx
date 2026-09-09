@@ -95,7 +95,7 @@ export function ManagersList() {
 
       <div className="space-y-3">
         {managers?.map((m) => (
-          <div key={m.id} className="flex items-center justify-between rounded-lg bg-surface p-4 border border-line">
+          <div key={m.id} data-testid="manager-row" className="flex items-center justify-between rounded-lg bg-surface p-4 border border-line">
             <div>
               <p className="font-semibold text-ink">{m.displayName}</p>
               <p className="text-xs text-muted">{m.email}</p>
