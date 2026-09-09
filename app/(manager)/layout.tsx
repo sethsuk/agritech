@@ -1,29 +1,16 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { currentUser, isStaff } from "@/lib/auth/currentUser";
 import { ManagerBottomNav } from "@/components/manager/ManagerBottomNav";
 import { LogoutButton } from "@/components/manager/LogoutButton";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { T } from "@/components/T";
 
 export default async function ManagerLayout({ children }: { children: ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  const admin = createAdminClient();
-  const { data: profile } = await admin
-    .from("users")
-    .select("role, display_name")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "manager" && profile.role !== "owner")) {
-    redirect("/scan");
-  }
+  const me = await currentUser();
+  if (!me) redirect("/login");
+  if (!isStaff(me.role)) redirect("/scan");
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-alt">
@@ -47,7 +34,7 @@ export default async function ManagerLayout({ children }: { children: ReactNode 
             {/* Name is the least load-bearing item here — drop it on mobile so the
                 toggle and logout stay on one line. */}
             <span className="hidden whitespace-nowrap text-sm text-muted sm:inline">
-              {profile.display_name}
+              {me.displayName}
             </span>
             <LogoutButton />
           </div>

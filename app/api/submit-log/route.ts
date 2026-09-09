@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyToken } from "@/lib/logToken";
 import { validate } from "@/lib/validation";
+import { refreshTreeDerivedState } from "@/lib/derived";
 import type { DbTree, DbTaskDefinition, GenerationColor } from "@/types/database";
 
 const GENERATION_COLORS: readonly GenerationColor[] = ["red", "blue", "yellow", "white"];
@@ -262,9 +263,8 @@ async function handleSideEffects({
     });
   }
 
-  // Update tree derived state
-  await admin.from("trees").update({
-    derived_last_updated: now.toISOString(),
-    derived_days_since_last_log: 0,
-  }).eq("tree_id", tree.tree_id);
+  // Recompute the tree's cached derived state. This runs last on purpose: the alert
+  // inserts above are part of what it counts, and it reads them back rather than
+  // incrementing, so the tally is right even if an insert above was skipped.
+  await refreshTreeDerivedState(admin, tree.tree_id);
 }

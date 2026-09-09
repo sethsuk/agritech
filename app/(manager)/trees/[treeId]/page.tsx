@@ -11,6 +11,7 @@ import { dict, type DictKey } from "@/lib/i18n/dictionary";
 import { KNOWN_VARIETIES, varietyName } from "@/lib/i18n/varieties";
 import { DateInputDMY } from "@/components/DateInputDMY";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { TreeHealthBadge } from "@/components/manager/TreeHealthBadge";
 import type { DbTree, DbAlert } from "@/types/database";
 
 interface LogRow {
@@ -198,9 +199,11 @@ export default function ManagerTreeDetailPage() {
               {tr("zoneLabel")} {tree.zone}{tree.side} · {tr("rowLabel")} {tree.row_num} · {tr("columnLabel")} {tree.position}
             </p>
           </div>
-          <span className="rounded-full bg-primary-tint px-3 py-1 text-xs font-semibold text-primary-ink">
-            {Math.round(Number(tree.derived_health_score) * 100)}%
-          </span>
+          <TreeHealthBadge
+            openAlerts={openAlerts.length}
+            hasTier1Alert={openAlerts.some((a) => a.tier === "tier_1")}
+            className="px-3 py-1"
+          />
         </div>
 
         {openAlerts.length > 0 && (

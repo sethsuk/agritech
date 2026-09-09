@@ -3,8 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { TreeQrDownloadButton } from "@/components/manager/TreeQrDownloadButton";
+import { TreeHealthBadge } from "@/components/manager/TreeHealthBadge";
 import { T } from "@/components/T";
 import { VarietyName } from "@/components/VarietyName";
+import { daysSinceLastLog } from "@/lib/derived/treeHealth";
 
 export default async function TreesPage({
   searchParams,
@@ -19,12 +21,12 @@ export default async function TreesPage({
 
   const admin = createAdminClient();
 
-  const [{ data: zoneRows }, treesQuery] = await Promise.all([
+  const [{ data: zoneRows }, treesQuery, { data: tier1Rows }] = await Promise.all([
     admin.from("trees").select("zone, side").eq("status", "active"),
     (async () => {
       let query = admin
         .from("trees")
-        .select("tree_id, qr_code, zone, side, row_num, position, variety, status, derived_days_since_last_log, derived_open_alerts, derived_health_score")
+        .select("tree_id, qr_code, zone, side, row_num, position, variety, status, derived_last_updated, derived_open_alerts")
         .eq("status", "active")
         .order("zone")
         .order("side")
@@ -36,25 +38,21 @@ export default async function TreesPage({
       if (zoneFilter && side) query = query.eq("zone", zoneFilter.slice(0, 1)).eq("side", side);
       return query.limit(200);
     })(),
+    // Which trees have an open tier-1 alert. `derived_open_alerts` is only a count, and
+    // the badge escalates on tier — without this the list and the detail page would
+    // disagree about the same tree.
+    admin.from("alerts").select("tree_id").eq("status", "open").eq("tier", "tier_1"),
   ]);
 
   const { data: trees } = treesQuery;
+  const tier1Trees = new Set((tier1Rows ?? []).map((r) => r.tree_id));
 
   const zones = Array.from(
     new Set((zoneRows ?? []).map((r) => `${r.zone}${r.side}`)),
   ).sort();
 
-  const healthColor = (score: number) => {
-    if (score >= 0.8) return "text-primary-ink";
-    if (score >= 0.5) return "text-caution-ink";
-    return "text-warning-ink";
-  };
-
-  const healthBg = (score: number) => {
-    if (score >= 0.8) return "bg-primary-tint text-primary-ink";
-    if (score >= 0.5) return "bg-caution-tint text-caution-ink";
-    return "bg-warning-tint text-warning-ink";
-  };
+  // One `now` for the whole render so every row's day count is measured from the same instant.
+  const now = new Date();
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
@@ -108,15 +106,13 @@ export default async function TreesPage({
                     🔔 {tree.derived_open_alerts}
                   </span>
                 )}
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${healthBg(Number(tree.derived_health_score))}`}>
-                  {Math.round(Number(tree.derived_health_score) * 100)}%
-                </span>
+                <TreeHealthBadge openAlerts={Number(tree.derived_open_alerts)} hasTier1Alert={tier1Trees.has(tree.tree_id)} />
                 <TreeQrDownloadButton treeId={tree.tree_id} qrCode={tree.qr_code} />
               </div>
             </div>
             <p className="mt-1 text-xs text-muted">
-              <T k="recentLogsTitle" />: {tree.derived_days_since_last_log !== null
-                ? <>{tree.derived_days_since_last_log} <T k="daysAgoSuffix" /></>
+              <T k="recentLogsTitle" />: {daysSinceLastLog(tree.derived_last_updated, now) !== null
+                ? <>{daysSinceLastLog(tree.derived_last_updated, now)} <T k="daysAgoSuffix" /></>
                 : <T k="neverLoggedYet" />}
             </p>
           </Link>
@@ -150,12 +146,12 @@ export default async function TreesPage({
                 </td>
                 <td className="px-4 py-3 text-muted">{tree.zone}{tree.side}</td>
                 <td className="px-4 py-3 text-muted"><VarietyName variety={tree.variety} /></td>
-                <td className={`px-4 py-3 font-semibold ${healthColor(Number(tree.derived_health_score))}`}>
-                  {Math.round(Number(tree.derived_health_score) * 100)}%
+                <td className="px-4 py-3">
+                  <TreeHealthBadge openAlerts={Number(tree.derived_open_alerts)} hasTier1Alert={tier1Trees.has(tree.tree_id)} />
                 </td>
                 <td className="px-4 py-3 text-muted">
-                  {tree.derived_days_since_last_log !== null
-                    ? <>{tree.derived_days_since_last_log} <T k="daysAgoSuffix" /></>
+                  {daysSinceLastLog(tree.derived_last_updated, now) !== null
+                    ? <>{daysSinceLastLog(tree.derived_last_updated, now)} <T k="daysAgoSuffix" /></>
                     : <T k="neverLoggedYet" />}
                 </td>
                 <td className="px-4 py-3">

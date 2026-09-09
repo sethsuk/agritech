@@ -4,6 +4,12 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { T } from "@/components/T";
 import type { DictKey } from "@/lib/i18n/dictionary";
+import {
+  reliabilityByWorker,
+  emptyReliability,
+  formatFlagRate,
+  formatAvgCompletion,
+} from "@/lib/derived";
 
 const tierLabelKey: Record<string, DictKey> = {
   trusted: "tierTrusted",
@@ -22,11 +28,16 @@ export default async function WorkersPage() {
   if (!user) redirect("/login");
 
   const admin = createAdminClient();
-  const { data: workers } = await admin
-    .from("workers")
-    .select("*, users(display_name, role)")
-    .eq("active", true)
-    .order("created_at");
+  const [{ data: workers }, reliability] = await Promise.all([
+    admin
+      .from("workers")
+      .select("*, users(display_name, role)")
+      .eq("active", true)
+      .order("created_at"),
+    // Computed from task_logs, not read from workers.reliability_* — those columns have
+    // never had a writer. One query for every worker; see lib/derived/reliability.ts.
+    reliabilityByWorker(admin),
+  ]);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
@@ -44,6 +55,7 @@ export default async function WorkersPage() {
       <div className="space-y-3 sm:hidden">
         {workers?.map((w) => {
           const name = (w as { users?: { display_name?: string } }).users?.display_name ?? "—";
+          const rel = reliability.get(w.worker_id) ?? emptyReliability();
           return (
             <Link
               key={w.worker_id}
@@ -61,15 +73,28 @@ export default async function WorkersPage() {
                 <T k="zoneLabel" />: {w.assigned_zones.join(", ") || "—"}
               </p>
               */}
-              <div className="mt-2 flex gap-4 text-xs text-muted">
-                <span><T k="totalLogsPrefix" /> {w.reliability_logs_total}</span>
-                <span><T k="flagRatePrefix" /> {(Number(w.reliability_flag_rate) * 100).toFixed(1)}%</span>
-                <span>
-                  {w.reliability_avg_completion_seconds > 0
-                    ? <><T k="avgPrefix" /> {Math.round(Number(w.reliability_avg_completion_seconds))}s</>
-                    : <T k="noDataYet" />}
-                </span>
-              </div>
+              {rel.allTime.logsTotal === 0 ? (
+                <p className="mt-2 text-xs text-muted"><T k="noDataYet" /></p>
+              ) : (
+                <div className="mt-2 space-y-1 text-xs">
+                  <div className="flex gap-4 text-muted">
+                    <span className="w-20 flex-shrink-0 text-[11px] uppercase tracking-wide">
+                      <T k="reliabilityRecent" />
+                    </span>
+                    <span><T k="totalLogsPrefix" /> {rel.recent.logsTotal}</span>
+                    <span><T k="flagRatePrefix" /> {formatFlagRate(rel.recent)}</span>
+                    <span><T k="avgPrefix" /> {formatAvgCompletion(rel.recent)}</span>
+                  </div>
+                  <div className="flex gap-4 text-muted opacity-70">
+                    <span className="w-20 flex-shrink-0 text-[11px] uppercase tracking-wide">
+                      <T k="reliabilityAllTime" />
+                    </span>
+                    <span><T k="totalLogsPrefix" /> {rel.allTime.logsTotal}</span>
+                    <span><T k="flagRatePrefix" /> {formatFlagRate(rel.allTime)}</span>
+                    <span><T k="avgPrefix" /> {formatAvgCompletion(rel.allTime)}</span>
+                  </div>
+                </div>
+              )}
             </Link>
           );
         })}
@@ -87,14 +112,25 @@ export default async function WorkersPage() {
             <tr className="border-b border-line text-left text-xs text-muted">
               <th className="px-4 py-3 font-semibold"><T k="colName" /></th>
               {/* Workers currently see all zones — zone column disabled. <th className="px-4 py-3 font-semibold"><T k="zoneLabel" /></th> */}
-              <th className="px-4 py-3 font-semibold"><T k="colTotalLogs" /></th>
-              <th className="px-4 py-3 font-semibold"><T k="colFlagRate" /></th>
-              <th className="px-4 py-3 font-semibold"><T k="colAvgTime" /></th>
+              <th className="px-4 py-3 font-semibold">
+                <T k="colTotalLogs" />
+                <span className="block font-normal opacity-70"><T k="reliabilityRecent" /> / <T k="reliabilityAllTime" /></span>
+              </th>
+              <th className="px-4 py-3 font-semibold">
+                <T k="colFlagRate" />
+                <span className="block font-normal opacity-70"><T k="reliabilityRecent" /> / <T k="reliabilityAllTime" /></span>
+              </th>
+              <th className="px-4 py-3 font-semibold">
+                <T k="colAvgTime" />
+                <span className="block font-normal opacity-70"><T k="reliabilityRecent" /> / <T k="reliabilityAllTime" /></span>
+              </th>
               <th className="px-4 py-3 font-semibold"><T k="colTrustTier" /></th>
             </tr>
           </thead>
           <tbody>
-            {workers?.map((w) => (
+            {workers?.map((w) => {
+              const rel = reliability.get(w.worker_id) ?? emptyReliability();
+              return (
               <tr key={w.worker_id} className="border-b border-line last:border-0 hover:bg-surface-alt">
                 <td className="px-4 py-3 font-semibold text-ink">
                   <Link href={`/workers/${w.worker_id}`} className="block">
@@ -102,14 +138,17 @@ export default async function WorkersPage() {
                   </Link>
                 </td>
                 {/* <td className="px-4 py-3 text-muted">{w.assigned_zones.join(", ") || "—"}</td> */}
-                <td className="px-4 py-3 text-muted">{w.reliability_logs_total}</td>
                 <td className="px-4 py-3 text-muted">
-                  {(Number(w.reliability_flag_rate) * 100).toFixed(1)}%
+                  <span className="text-ink">{rel.recent.logsTotal}</span>
+                  <span className="ml-1.5 text-xs opacity-70">/ {rel.allTime.logsTotal}</span>
                 </td>
                 <td className="px-4 py-3 text-muted">
-                  {w.reliability_avg_completion_seconds > 0
-                    ? `${Math.round(Number(w.reliability_avg_completion_seconds))}s`
-                    : "—"}
+                  <span className="text-ink">{formatFlagRate(rel.recent)}</span>
+                  <span className="ml-1.5 text-xs opacity-70">/ {formatFlagRate(rel.allTime)}</span>
+                </td>
+                <td className="px-4 py-3 text-muted">
+                  <span className="text-ink">{formatAvgCompletion(rel.recent)}</span>
+                  <span className="ml-1.5 text-xs opacity-70">/ {formatAvgCompletion(rel.allTime)}</span>
                 </td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${tierColor[w.trust_tier] ?? ""}`}>
@@ -117,7 +156,8 @@ export default async function WorkersPage() {
                   </span>
                 </td>
               </tr>
-            ))}
+              );
+            })}
             {(!workers || workers.length === 0) && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-muted"><T k="noWorkersYet" /></td>

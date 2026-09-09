@@ -2,8 +2,15 @@ import type { TaskField } from "@/types/database";
 
 export type FieldsResult = { ok: true } | { ok: false; error: string };
 
-/** A value counts as "not filled in" if it's absent, blank, or an empty grade tally. */
-function isMissing(field: TaskField, raw: unknown): boolean {
+/**
+ * A value counts as "not filled in" if it's absent, blank, or an empty grade tally.
+ *
+ * Exported because the task form must apply the *same* rule before enabling submit. It
+ * previously hand-rolled `undefined || ""`, which missed the empty-grade-tally case — so a
+ * harvest form with no grades entered passed the browser check and was then rejected by
+ * the server with an untranslated English reason.
+ */
+export function isMissing(field: TaskField, raw: unknown): boolean {
   if (raw === undefined || raw === null || raw === "") return true;
   if (field.type === "grade_counter") {
     return typeof raw !== "object" || Object.keys(raw as object).length === 0;
@@ -12,6 +19,22 @@ function isMissing(field: TaskField, raw: unknown): boolean {
 }
 
 const OPTION_FIELD_TYPES = ["dropdown", "color_picker", "severity_picker"];
+
+/**
+ * The first required field the worker hasn't filled in, or null if the form is complete.
+ *
+ * The form's counterpart to `checkFields` — it returns the field itself so the UI can name
+ * it in the worker's own language, where the server can only return an id.
+ */
+export function firstMissingRequiredField(
+  formData: Record<string, unknown>,
+  fields: TaskField[],
+): TaskField | null {
+  for (const field of fields) {
+    if (field.required && isMissing(field, formData[field.field_id])) return field;
+  }
+  return null;
+}
 
 /**
  * Layer 3 — submitted values actually match the task definition.

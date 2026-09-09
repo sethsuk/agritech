@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isStaff } from "./currentUser";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -36,7 +37,7 @@ export async function requireStaff(): Promise<StaffGate> {
     .eq("id", user.id)
     .single();
 
-  if (!profile || (profile.role !== "manager" && profile.role !== "owner")) {
+  if (!isStaff(profile?.role)) {
     return { ok: false, response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
 

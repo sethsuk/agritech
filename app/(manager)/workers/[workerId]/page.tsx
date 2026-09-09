@@ -8,6 +8,12 @@ import { t, type Lang } from "@/lib/i18n/t";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict, type DictKey } from "@/lib/i18n/dictionary";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import {
+  emptyReliability,
+  formatAvgCompletion,
+  formatFlagRate,
+  type WorkerReliability,
+} from "@/lib/derived/reliability";
 import type { DbWorkerWithUser } from "@/types/database";
 
 interface LogRow {
@@ -21,6 +27,8 @@ interface LogRow {
 interface DetailData {
   worker: DbWorkerWithUser;
   recentLogs: LogRow[];
+  /** Computed server-side from task_logs — worker.reliability_* has no writer. */
+  reliability: WorkerReliability;
 }
 
 const LANGUAGES: { value: "my" | "th" | "en"; label: string }[] = [
@@ -151,6 +159,8 @@ export default function ManagerWorkerDetailPage() {
   }
 
   const { worker, recentLogs } = data;
+  // Older cached responses may predate the reliability field; fall back rather than crash.
+  const reliability = data.reliability ?? emptyReliability();
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
@@ -173,14 +183,38 @@ export default function ManagerWorkerDetailPage() {
           </span>
         </div>
 
-        <div className="mt-3 flex gap-4 border-t border-line pt-3 text-xs text-muted">
-          <span>{tr("totalLogsPrefix")} {worker.reliability_logs_total}</span>
-          <span>{tr("flagRatePrefix")} {(Number(worker.reliability_flag_rate) * 100).toFixed(1)}%</span>
-          <span>
-            {worker.reliability_avg_completion_seconds > 0
-              ? `${tr("avgPrefix")} ${Math.round(Number(worker.reliability_avg_completion_seconds))}s`
-              : tr("noDataYet")}
-          </span>
+        <div className="mt-3 border-t border-line pt-3">
+          {reliability.allTime.logsTotal === 0 ? (
+            <p className="text-xs text-muted">{tr("noDataYet")}</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                { label: tr("reliabilityRecent"), w: reliability.recent, strong: true },
+                { label: tr("reliabilityAllTime"), w: reliability.allTime, strong: false },
+              ]).map(({ label, w, strong }) => (
+                <div
+                  key={label}
+                  className={`rounded-lg p-3 ${strong ? "bg-surface-alt" : "bg-surface-alt/50"}`}
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</p>
+                  <dl className="mt-1.5 space-y-1 text-xs text-muted">
+                    <div className="flex justify-between gap-2">
+                      <dt>{tr("totalLogsPrefix")}</dt>
+                      <dd className="font-semibold text-ink">{w.logsTotal}</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt>{tr("flagRatePrefix")}</dt>
+                      <dd className="font-semibold text-ink">{formatFlagRate(w)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt>{tr("avgPrefix")}</dt>
+                      <dd className="font-semibold text-ink">{formatAvgCompletion(w)}</dd>
+                    </div>
+                  </dl>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
