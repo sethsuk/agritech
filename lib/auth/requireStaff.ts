@@ -42,3 +42,29 @@ export async function requireStaff(): Promise<StaffGate> {
 
   return { ok: true, userId: user.id, admin };
 }
+
+/**
+ * Auth gate for owner-only API routes (currently: managing manager accounts).
+ * Same shape and reasoning as requireStaff — service-role client bypasses RLS, so this
+ * check is the only thing standing between a manager and another manager's account.
+ */
+export async function requireOwner(): Promise<StaffGate> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  }
+
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || profile.role !== "owner") {
+    return { ok: false, response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+
+  return { ok: true, userId: user.id, admin };
+}

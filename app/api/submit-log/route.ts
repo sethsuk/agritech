@@ -135,7 +135,9 @@ export async function POST(request: Request) {
   const logId = log.log_id;
 
   // Side effects (fire-and-forget — don't block the response)
-  handleSideEffects({ admin, logId, tree, taskDef, formData, userId: user.id }).catch(console.error);
+  handleSideEffects({ admin, logId, tree, taskDef, formData, userId: user.id }).catch((err) => {
+    console.error("handleSideEffects failed", { logId, treeId: tree.tree_id, taskType: taskDef.task_type, err });
+  });
 
   return NextResponse.json({
     logId,

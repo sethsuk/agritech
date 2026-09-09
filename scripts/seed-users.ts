@@ -24,6 +24,7 @@ const supabase = createClient(
 );
 
 const ACCOUNTS = [
+  { email: "owner@farm.local",   password: "owner1234",   role: "owner",   display_name: "Owner" },
   { email: "manager@farm.local", password: "manager1234", role: "manager", display_name: "K. Nong" },
   { email: "worker1@farm.local", password: "1111", role: "worker", display_name: "U Aung",  zones: ["A"] },
   { email: "worker2@farm.local", password: "2222", role: "worker", display_name: "Daw Khin", zones: ["A"] },
