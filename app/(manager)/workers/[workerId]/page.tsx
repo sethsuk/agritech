@@ -68,6 +68,7 @@ export default function ManagerWorkerDetailPage() {
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [confirmToggle, setConfirmToggle] = useState(false);
+  const [savingTier, setSavingTier] = useState(false);
 
   const tr = (key: DictKey) => t(dict[key], lang);
 
@@ -134,6 +135,28 @@ export default function ManagerWorkerDetailPage() {
     }
   }
 
+  async function handleSetTier(tier: "trusted" | "standard" | "audit") {
+    if (!data || tier === data.worker.trust_tier) return;
+    setSavingTier(true);
+    try {
+      const res = await fetch(`/api/manager/workers/${workerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trustTier: tier }),
+      });
+      if (!res.ok) {
+        toast.error(tr("trustTierUpdateFailedToast"));
+        return;
+      }
+      toast.success(tr("trustTierUpdatedToast"));
+      load();
+    } catch {
+      toast.error(tr("genericErrorToast"));
+    } finally {
+      setSavingTier(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-6">
@@ -181,6 +204,26 @@ export default function ManagerWorkerDetailPage() {
               ? `${tr("avgPrefix")} ${Math.round(Number(worker.reliability_avg_completion_seconds))}s`
               : tr("noDataYet")}
           </span>
+        </div>
+      </div>
+
+      {/* Trust tier */}
+      <div className="mb-4 rounded-lg bg-surface p-5 border border-line">
+        <h2 className="mb-3 text-sm font-semibold text-body">{tr("trustTierLabel")}</h2>
+        <div className="flex gap-2">
+          {(["trusted", "standard", "audit"] as const).map((tier) => (
+            <button
+              key={tier}
+              type="button"
+              disabled={savingTier}
+              onClick={() => handleSetTier(tier)}
+              className={`h-12 flex-1 rounded-lg text-sm font-semibold disabled:opacity-50 ${
+                worker.trust_tier === tier ? "bg-primary text-white" : "bg-surface-alt text-body"
+              }`}
+            >
+              {tr(tierLabelKey[tier])}
+            </button>
+          ))}
         </div>
       </div>
 

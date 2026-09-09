@@ -38,9 +38,9 @@ by email and re-upserts its `public.users`/`public.workers` rows.
 `globalThis.WebSocket` with `ws` before constructing a Supabase client — supabase-js builds a
 RealtimeClient eagerly and Node < 22 has no native WebSocket. The app itself doesn't need this.
 
-Dummy logins (after seeding): `manager@farm.local` / `manager1234`, `worker1@farm.local` / `1111`
-(and worker2/2222, worker3/3333). Root `/` redirects by role: workers → `/scan`, managers/owners →
-`/dashboard`.
+Dummy logins (after seeding): `owner@farm.local` / `owner1234`, `manager@farm.local` /
+`manager1234`, `worker1@farm.local` / `1111` (and worker2/2222, worker3/3333). Root `/` redirects
+by role: workers → `/scan`, managers/owners → `/dashboard`.
 
 ## Architecture
 

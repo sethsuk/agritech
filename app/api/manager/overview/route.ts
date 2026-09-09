@@ -13,6 +13,10 @@ import { requireStaff } from "@/lib/auth/requireStaff";
 const RANGES = ["today", "week", "month", "year", "all"] as const;
 type Range = (typeof RANGES)[number];
 
+// Days without a log before a tree is surfaced as "stale". Deployment config, not DB
+// data — same convention as the PHOTO_AUDIT_RATE_* env vars.
+const STALE_TREE_DAYS = Number(process.env.STALE_TREE_DAYS ?? "3");
+
 function rangeStart(range: Range): Date | null {
   const now = new Date();
   if (range === "today") {
@@ -66,6 +70,26 @@ export async function GET(request: Request) {
     .select("form_data, trees!inner(zone,side)")
     .eq("task_type", "harvest");
 
+  // Stale trees / overdue sets: current backlog, not time-ranged — same treatment as
+  // alerts above. derived_days_since_last_log is written as 0 on every log insert and
+  // never updated after that (see submit-log route), so it can't be trusted for "is
+  // this tree currently stale" — derive it from derived_last_updated instead.
+  const staleCutoff = new Date(Date.now() - STALE_TREE_DAYS * 24 * 60 * 60 * 1000);
+  let staleTreesQuery = admin.from("trees")
+    .select("tree_id, zone, side, derived_last_updated")
+    .eq("status", "active")
+    .or(`derived_last_updated.is.null,derived_last_updated.lt.${staleCutoff.toISOString()}`)
+    .order("derived_last_updated", { ascending: true, nullsFirst: true })
+    .limit(20);
+
+  const today = new Date().toISOString().slice(0, 10);
+  let overdueSetsQuery = admin.from("sets")
+    .select("set_id, tree_id, color, harvest_window_end, trees!inner(zone,side)")
+    .not("status", "in", "(harvested,failed)")
+    .lt("harvest_window_end", today)
+    .order("harvest_window_end", { ascending: true })
+    .limit(20);
+
   if (since) {
     logsCountQuery = logsCountQuery.gte("submitted_at", since.toISOString());
     recentLogsQuery = recentLogsQuery.gte("submitted_at", since.toISOString());
@@ -79,6 +103,8 @@ export async function GET(request: Request) {
     logsCountQuery = logsCountQuery.eq("trees.zone", zoneFilter.zone).eq("trees.side", zoneFilter.side);
     recentLogsQuery = recentLogsQuery.eq("trees.zone", zoneFilter.zone).eq("trees.side", zoneFilter.side);
     harvestFormDataQuery = harvestFormDataQuery.eq("trees.zone", zoneFilter.zone).eq("trees.side", zoneFilter.side);
+    staleTreesQuery = staleTreesQuery.eq("zone", zoneFilter.zone).eq("side", zoneFilter.side);
+    overdueSetsQuery = overdueSetsQuery.eq("trees.zone", zoneFilter.zone).eq("trees.side", zoneFilter.side);
   }
 
   const [
@@ -88,6 +114,8 @@ export async function GET(request: Request) {
     { data: recentAlerts },
     { data: recentLogs },
     { data: harvestLogs },
+    { data: staleTrees },
+    { data: overdueSets },
   ] = await Promise.all([
     openAlertsQuery,
     tier1AlertsQuery,
@@ -95,7 +123,26 @@ export async function GET(request: Request) {
     recentAlertsQuery,
     recentLogsQuery,
     harvestFormDataQuery,
+    staleTreesQuery,
+    overdueSetsQuery,
   ]);
+
+  const now = Date.now();
+  const daysBetween = (iso: string) => Math.floor((now - new Date(iso).getTime()) / (24 * 60 * 60 * 1000));
+
+  const staleTreesWithDays = (staleTrees ?? []).map((tree) => ({
+    treeId: tree.tree_id,
+    zone: tree.zone,
+    side: tree.side,
+    daysSinceLastLog: tree.derived_last_updated ? daysBetween(tree.derived_last_updated) : null,
+  }));
+
+  const overdueSetsWithDays = (overdueSets ?? []).map((set) => ({
+    setId: set.set_id,
+    treeId: set.tree_id,
+    color: set.color,
+    daysOverdue: daysBetween(set.harvest_window_end),
+  }));
 
   // Sum grade_counts across harvest logs in range/zone
   const fruitByGrade: Record<string, number> = {};
@@ -119,5 +166,9 @@ export async function GET(request: Request) {
     fruitByGrade,
     recentAlerts: recentAlerts ?? [],
     recentLogs: recentLogs ?? [],
+    staleTreesCount: staleTreesWithDays.length,
+    staleTrees: staleTreesWithDays,
+    overdueSetsCount: overdueSetsWithDays.length,
+    overdueSets: overdueSetsWithDays,
   });
 }

@@ -41,6 +41,9 @@ export default async function ManagerLayout({ children }: { children: ReactNode 
             <Link href="/alerts"    className="text-sm text-body hover:text-primary-ink"><T k="navAlerts" /></Link>
             <Link href="/workers"   className="text-sm text-body hover:text-primary-ink"><T k="navWorkers" /></Link>
             <Link href="/trees"     className="text-sm text-body hover:text-primary-ink"><T k="navTrees" /></Link>
+            {profile.role === "owner" && (
+              <Link href="/managers" className="text-sm text-body hover:text-primary-ink"><T k="navManagers" /></Link>
+            )}
           </div>
           <div className="ml-auto flex items-center gap-3 sm:gap-4">
             <LanguageToggle />
@@ -57,7 +60,7 @@ export default async function ManagerLayout({ children }: { children: ReactNode 
       {/* Extra bottom padding on mobile so content clears the bottom tab bar */}
       <main className="flex-1 pb-20 sm:pb-0">{children}</main>
 
-      <ManagerBottomNav />
+      <ManagerBottomNav isOwner={profile.role === "owner"} />
     </div>
   );
 }

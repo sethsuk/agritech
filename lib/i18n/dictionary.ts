@@ -75,6 +75,7 @@ export const dict = {
   navAlerts: { th: "การแจ้งเตือน", my: "သတိပေးချက်များ", en: "Alerts" },
   navWorkers: { th: "คนงาน", my: "အလုပ်သမား", en: "Workers" },
   navTrees: { th: "ต้นทุเรียน", my: "ဒူးရင်းပင်", en: "Trees" },
+  navManagers: { th: "ผู้จัดการ", my: "မန်နေဂျာများ", en: "Managers" },
 
   dashboardTitle: { th: "ภาพรวมฟาร์ม", my: "လယ်ယာမြေ ခြုံငုံသုံးသပ်ချက်", en: "Farm overview" },
   statOpenAlerts: { th: "การแจ้งเตือนที่เปิดอยู่", my: "ဖွင့်ထားသော သတိပေးချက်များ", en: "Open alerts" },
@@ -91,6 +92,15 @@ export const dict = {
   alertTierModerate: { th: "ปานกลาง", my: "အလယ်အလတ်", en: "Moderate" },
   alertTierInfo: { th: "ข้อมูล", my: "အချက်အလက်", en: "Info" },
 
+  // --- Dashboard: stale trees / overdue sets ---
+  statStaleTrees: { th: "ต้นที่เงียบหาย", my: "ငြိမ်နေသော ပင်များ", en: "Stale trees" },
+  statOverdueSets: { th: "ชุดผลเลยกำหนด", my: "သတ်မှတ်ချိန် ကျော်သော အသီးအပွင့်", en: "Overdue sets" },
+  staleTreesTitle: { th: "ต้นที่ยังไม่มีการบันทึกนาน", my: "ကြာမြင့်စွာ မှတ်တမ်းမတင်ရသေးသော ပင်များ", en: "Trees gone quiet" },
+  overdueSetsTitle: { th: "ชุดผลที่เลยกำหนดเก็บเกี่ยว", my: "အသီးဆွတ်ချိန် ကျော်သွားသော အသီးအပွင့်", en: "Sets past harvest window" },
+  noStaleTrees: { th: "ทุกต้นมีการบันทึกล่าสุด", my: "ပင်အားလုံး မှတ်တမ်းတင်ပြီးဖြစ်သည်", en: "No stale trees" },
+  noOverdueSets: { th: "ไม่มีชุดผลที่เกินกำหนด", my: "သတ်မှတ်ချိန် ကျော်သော အသီးအပွင့် မရှိပါ", en: "No overdue sets" },
+  overdueByDaysSuffix: { th: "วันเกินกำหนด", my: "ရက် ကျော်နေသည်", en: "days overdue" },
+
   statusOpen: { th: "เปิด", my: "ဖွင့်ထားသည်", en: "Open" },
   statusResolved: { th: "แก้ไขแล้ว", my: "ဖြေရှင်းပြီး", en: "Resolved" },
   statusDismissed: { th: "ปิดแล้ว", my: "ပိတ်ပြီး", en: "Dismissed" },
@@ -104,6 +114,9 @@ export const dict = {
   tierTrusted: { th: "เชื่อถือ", my: "ယုံကြည်ရသော", en: "Trusted" },
   tierStandard: { th: "ปกติ", my: "ပုံမှန်", en: "Standard" },
   tierAudit: { th: "ตรวจสอบ", my: "စစ်ဆေးဆဲ", en: "Audit" },
+  trustTierLabel: { th: "ระดับความเชื่อถือ", my: "ယုံကြည်ရမှု အဆင့်", en: "Trust tier" },
+  trustTierUpdatedToast: { th: "ปรับระดับความเชื่อถือแล้ว ✓", my: "ယုံကြည်ရမှု အဆင့် ပြောင်းပြီးပါပြီ ✓", en: "Trust tier updated ✓" },
+  trustTierUpdateFailedToast: { th: "ปรับระดับความเชื่อถือไม่สำเร็จ", my: "ယုံကြည်ရမှု အဆင့် ပြောင်း၍မရပါ", en: "Failed to update trust tier" },
   noWorkersYet: { th: "ยังไม่มีคนงาน", my: "အလုပ်သမား မရှိသေးပါ", en: "No workers yet" },
   totalLogsPrefix: { th: "บันทึก", my: "မှတ်တမ်း", en: "Logs" },
   flagRatePrefix: { th: "แฟลก", my: "အမှတ်အသား", en: "Flag rate" },
@@ -152,6 +165,21 @@ export const dict = {
   reactivateWorkerTitle: { th: "เปิดใช้งานคนงานนี้อีกครั้ง?", my: "ဤအလုပ်သမားကို ပြန်လည်အသုံးပြုမလား?", en: "Reactivate this worker?" },
   deactivatedWorkerToast: { th: "ปิดใช้งานคนงานแล้ว", my: "အလုပ်သမားကို ပိတ်ပြီးပါပြီ", en: "Worker deactivated" },
   reactivatedWorkerToast: { th: "เปิดใช้งานคนงานแล้ว", my: "အလုပ်သမားကို ပြန်လည်အသုံးပြုပြီးပါပြီ", en: "Worker reactivated" },
+
+  // --- Owner: manage managers ---
+  addManagerButton: { th: "+ เพิ่มผู้จัดการ", my: "+ မန်နေဂျာ ထည့်ရန်", en: "+ Add manager" },
+  newManagerTitle: { th: "เพิ่มผู้จัดการใหม่", my: "မန်နေဂျာ အသစ် ထည့်ရန်", en: "Add new manager" },
+  managerCreatedToast: { th: "สร้างบัญชีผู้จัดการแล้ว ✓", my: "မန်နေဂျာ အကောင့် ဖန်တီးပြီးပါပြီ ✓", en: "Manager account created ✓" },
+  addAnotherManagerButton: { th: "เพิ่มผู้จัดการอีกคน", my: "မန်နေဂျာ နောက်တစ်ဦး ထည့်ရန်", en: "Add another manager" },
+  goToManagersList: { th: "ไปที่รายชื่อผู้จัดการ", my: "မန်နေဂျာစာရင်းသို့ သွားရန်", en: "Go to managers list" },
+  noManagersFound: { th: "ยังไม่มีผู้จัดการ", my: "မန်နေဂျာ မရှိသေးပါ", en: "No managers yet" },
+  managerNotFound: { th: "ไม่พบผู้จัดการ", my: "မန်နေဂျာကို မတွေ့ပါ", en: "Manager not found" },
+  deactivateManagerButton: { th: "🚫 ปิดใช้งานผู้จัดการนี้", my: "🚫 ဤမန်နေဂျာကို ပိတ်ရန်", en: "🚫 Deactivate this manager" },
+  reactivateManagerButton: { th: "♻️ เปิดใช้งานอีกครั้ง", my: "♻️ ပြန်လည်အသုံးပြုရန်", en: "♻️ Reactivate" },
+  deactivateManagerTitle: { th: "ปิดใช้งานผู้จัดการนี้?", my: "ဤမန်နေဂျာကို ပိတ်မလား?", en: "Deactivate this manager?" },
+  reactivateManagerTitle: { th: "เปิดใช้งานผู้จัดการนี้อีกครั้ง?", my: "ဤမန်နေဂျာကို ပြန်လည်အသုံးပြုမလား?", en: "Reactivate this manager?" },
+  deactivatedManagerToast: { th: "ปิดใช้งานผู้จัดการแล้ว", my: "မန်နေဂျာကို ပိတ်ပြီးပါပြီ", en: "Manager deactivated" },
+  reactivatedManagerToast: { th: "เปิดใช้งานผู้จัดการแล้ว", my: "မန်နေဂျာကို ပြန်လည်အသုံးပြုပြီးပါပြီ", en: "Manager reactivated" },
 
   filterZoneAll: { th: "ทุกโซน", my: "ဇုန်အားလုံး", en: "All zones" },
   rangeToday: { th: "วันนี้", my: "ယနေ့", en: "Today" },

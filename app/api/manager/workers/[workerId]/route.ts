@@ -38,6 +38,7 @@ const PatchSchema = z.object({
   displayName: z.string().trim().min(1).optional(),
   language: z.enum(["my", "th", "en"]).optional(),
   active: z.boolean().optional(),
+  trustTier: z.enum(["trusted", "standard", "audit"]).optional(),
 });
 
 export async function PATCH(
@@ -56,8 +57,8 @@ export async function PATCH(
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { displayName, language, active } = parsed.data;
-  if (displayName === undefined && language === undefined && active === undefined) {
+  const { displayName, language, active, trustTier } = parsed.data;
+  if (displayName === undefined && language === undefined && active === undefined && trustTier === undefined) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
   }
 
@@ -87,6 +88,11 @@ export async function PATCH(
   const workerUpdate: Partial<DbWorker> = {};
   if (language !== undefined) workerUpdate.language = language;
   if (active !== undefined) workerUpdate.active = active;
+  if (trustTier !== undefined) {
+    workerUpdate.trust_tier = trustTier;
+    workerUpdate.trust_tier_set_by = gate.userId;
+    workerUpdate.trust_tier_changed_at = new Date().toISOString();
+  }
 
   let worker;
   if (Object.keys(workerUpdate).length > 0) {

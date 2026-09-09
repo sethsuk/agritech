@@ -24,7 +24,7 @@ export default async function TreesPage({
     (async () => {
       let query = admin
         .from("trees")
-        .select("tree_id, qr_code, zone, side, row_num, position, variety, status, derived_days_since_last_log, derived_open_alerts, derived_health_score")
+        .select("tree_id, qr_code, zone, side, row_num, position, variety, status, derived_last_updated, derived_open_alerts, derived_health_score")
         .eq("status", "active")
         .order("zone")
         .order("side")
@@ -43,6 +43,13 @@ export default async function TreesPage({
   const zones = Array.from(
     new Set((zoneRows ?? []).map((r) => `${r.zone}${r.side}`)),
   ).sort();
+
+  // derived_days_since_last_log is written as 0 on every log insert and never updated
+  // after that (see submit-log route) — compute the real value from the timestamp instead.
+  const daysSinceLastLog = (derivedLastUpdated: string | null) =>
+    derivedLastUpdated === null
+      ? null
+      : Math.floor((Date.now() - new Date(derivedLastUpdated).getTime()) / (24 * 60 * 60 * 1000));
 
   const healthColor = (score: number) => {
     if (score >= 0.8) return "text-primary-ink";
@@ -115,8 +122,8 @@ export default async function TreesPage({
               </div>
             </div>
             <p className="mt-1 text-xs text-muted">
-              <T k="recentLogsTitle" />: {tree.derived_days_since_last_log !== null
-                ? <>{tree.derived_days_since_last_log} <T k="daysAgoSuffix" /></>
+              <T k="recentLogsTitle" />: {daysSinceLastLog(tree.derived_last_updated) !== null
+                ? <>{daysSinceLastLog(tree.derived_last_updated)} <T k="daysAgoSuffix" /></>
                 : <T k="neverLoggedYet" />}
             </p>
           </Link>
@@ -154,8 +161,8 @@ export default async function TreesPage({
                   {Math.round(Number(tree.derived_health_score) * 100)}%
                 </td>
                 <td className="px-4 py-3 text-muted">
-                  {tree.derived_days_since_last_log !== null
-                    ? <>{tree.derived_days_since_last_log} <T k="daysAgoSuffix" /></>
+                  {daysSinceLastLog(tree.derived_last_updated) !== null
+                    ? <>{daysSinceLastLog(tree.derived_last_updated)} <T k="daysAgoSuffix" /></>
                     : <T k="neverLoggedYet" />}
                 </td>
                 <td className="px-4 py-3">

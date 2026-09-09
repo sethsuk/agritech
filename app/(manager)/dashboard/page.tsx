@@ -20,6 +20,10 @@ interface OverviewData {
   fruitByGrade: Record<string, number>;
   recentAlerts: (DbAlert & { trees?: { tree_id: string; zone: string }; workers?: { users: { display_name: string } } })[];
   recentLogs: Pick<DbTaskLog, "log_id" | "tree_id" | "task_type" | "worker_id" | "submitted_at" | "validation_status" | "validation_flags">[];
+  staleTreesCount: number;
+  staleTrees: { treeId: string; zone: string; side: string; daysSinceLastLog: number | null }[];
+  overdueSetsCount: number;
+  overdueSets: { setId: string; treeId: string; color: string; daysOverdue: number }[];
 }
 
 // Must stay in sync with tierBadge in app/(manager)/alerts/page.tsx — the same
@@ -70,6 +74,8 @@ export default function ManagerDashboard() {
         { label: tr("statUrgentAlerts"), value: data.tier1AlertsCount, color: "text-caution-ink", href: "/alerts" },
         { label: tr("statLogsLabel"), value: data.logsInRangeCount, color: "text-primary-ink", href: null },
         { label: tr("statFruitHarvested"), value: data.fruitTotalInRange, color: "text-status-ink", href: null },
+        { label: tr("statStaleTrees"), value: data.staleTreesCount, color: "text-caution-ink", href: "/trees" },
+        { label: tr("statOverdueSets"), value: data.overdueSetsCount, color: "text-warning-ink", href: "/trees" },
       ]
     : [];
 
@@ -124,7 +130,7 @@ export default function ManagerDashboard() {
       {/* Stat tiles */}
       <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {data === null
-          ? Array.from({ length: 4 }).map((_, i) => (
+          ? Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="h-24 animate-pulse rounded-lg bg-surface-alt" />
             ))
           : statCards.map(({ label, value, color, href }) => {
@@ -155,6 +161,66 @@ export default function ManagerDashboard() {
       {data === null && <div className="mb-8 h-8" />}
 
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* Stale trees */}
+        <section>
+          <h2 className="mb-3 font-semibold text-ink">{tr("staleTreesTitle")}</h2>
+          <div className="space-y-2">
+            {data === null && (
+              <div className="h-32 animate-pulse rounded-lg bg-surface-alt" />
+            )}
+            {data?.staleTrees.length === 0 && (
+              <div className="rounded-lg bg-surface p-6 text-center text-sm text-muted border border-line">
+                {tr("noStaleTrees")}
+              </div>
+            )}
+            {data?.staleTrees.map((tree) => (
+              <Link
+                key={tree.treeId}
+                href={`/trees/${tree.treeId}`}
+                className="flex items-center justify-between rounded-lg bg-surface px-4 py-3 border border-line active:bg-surface-alt"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-ink">{tree.treeId}</p>
+                  <p className="text-xs text-muted">{tree.zone}{tree.side}</p>
+                </div>
+                <span className="rounded-full bg-caution-tint px-2 py-0.5 text-xs font-semibold text-caution-ink">
+                  {tree.daysSinceLastLog !== null ? `${tree.daysSinceLastLog} ${tr("daysAgoSuffix")}` : tr("neverLoggedYet")}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* Overdue sets */}
+        <section>
+          <h2 className="mb-3 font-semibold text-ink">{tr("overdueSetsTitle")}</h2>
+          <div className="space-y-2">
+            {data === null && (
+              <div className="h-32 animate-pulse rounded-lg bg-surface-alt" />
+            )}
+            {data?.overdueSets.length === 0 && (
+              <div className="rounded-lg bg-surface p-6 text-center text-sm text-muted border border-line">
+                {tr("noOverdueSets")}
+              </div>
+            )}
+            {data?.overdueSets.map((set) => (
+              <Link
+                key={set.setId}
+                href={`/trees/${set.treeId}`}
+                className="flex items-center justify-between rounded-lg bg-surface px-4 py-3 border border-line active:bg-surface-alt"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-ink">{set.treeId}</p>
+                  <p className="text-xs text-muted">{set.color}</p>
+                </div>
+                <span className="rounded-full bg-warning-tint px-2 py-0.5 text-xs font-semibold text-warning-ink">
+                  {set.daysOverdue} {tr("overdueByDaysSuffix")}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         {/* Recent alerts */}
         <section>
           <div className="mb-3 flex items-center justify-between">
