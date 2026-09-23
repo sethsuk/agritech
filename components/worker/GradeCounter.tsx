@@ -48,7 +48,7 @@ export function GradeCounter({ options, value, min = 0, max = 200, step = 1, onC
         const displayValue = opt.value in drafts ? drafts[opt.value] : String(count);
         return (
           <div key={opt.value} className="flex items-center justify-between">
-            <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <span className="flex items-center gap-2 text-lg font-semibold text-body">
               <span className="text-lg">{opt.icon}</span>
               {t(opt.label, lang)}
             </span>
@@ -57,7 +57,7 @@ export function GradeCounter({ options, value, min = 0, max = 200, step = 1, onC
                 type="button"
                 onClick={() => setCount(opt.value, Math.max(min, count - step))}
                 disabled={count <= min}
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-lg font-bold text-slate-700 active:bg-slate-200 disabled:opacity-30"
+                className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-alt text-lg font-bold text-body active:bg-surface-press disabled:opacity-30"
               >
                 −
               </button>
@@ -70,13 +70,13 @@ export function GradeCounter({ options, value, min = 0, max = 200, step = 1, onC
                 onChange={(e) => setDrafts((d) => ({ ...d, [opt.value]: e.target.value }))}
                 onFocus={(e) => e.target.select()}
                 onBlur={() => commitDraft(opt.value)}
-                className="h-10 w-14 rounded-xl border border-slate-200 text-center text-lg font-bold text-slate-900 focus:border-emerald-500 focus:outline-none [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+                className="h-10 w-15 rounded-lg border border-line text-center text-lg font-bold text-ink focus:border-primary focus:outline-none [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
               />
               <button
                 type="button"
                 onClick={() => setCount(opt.value, Math.min(max, count + step))}
                 disabled={count >= max}
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-lg font-bold text-emerald-700 active:bg-emerald-200 disabled:opacity-30"
+                className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-tint text-lg font-bold text-primary-ink active:bg-primary-tint disabled:opacity-30"
               >
                 +
               </button>
@@ -85,7 +85,7 @@ export function GradeCounter({ options, value, min = 0, max = 200, step = 1, onC
         );
       })}
 
-      <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-semibold text-slate-600">
+      <div className="flex items-center justify-between border-t border-line pt-3 text-lg font-semibold text-body">
         <span>{t(dict.totalFruitCount, lang)}</span>
         <span>{total} {t(dict.fruitCountUnit, lang)}</span>
       </div>

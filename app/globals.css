@@ -1,14 +1,79 @@
 @import "tailwindcss";
 
+/* =============================================================================
+   Design tokens — "Field and sky"
+   See docs/design-system.md for the rationale and the measured contrast table.
+
+   Users are farm workers outdoors in direct sunlight, many with impaired vision,
+   reading Latin / Thai / Burmese. Every token that carries text is verified
+   against the page background: AAA (7:1) except `muted`, which is deliberately
+   AA (4.6:1) for incidental metadata only.
+
+   Flat by design: no gradients, no shadows, no blur. Cards are separated by
+   `border-line`, not elevation.
+   ========================================================================== */
 @theme {
-  --font-thai: "Noto Sans Thai", system-ui, sans-serif;
+  /* Type — one stack, per-script glyph substitution by the renderer.
+     Do not swap fonts per screen/language. */
+  --font-sans: var(--font-noto-sans), var(--font-noto-thai), var(--font-noto-myanmar), system-ui, sans-serif;
+
+  /* Surfaces */
+  --color-bg: #faf7f0;          /* page — off-white, not pure white, to cut glare */
+  --color-surface: #ffffff;     /* cards */
+  --color-surface-alt: #f0eade; /* subtle fills */
+  --color-surface-press: #e5ddcd;
+  --color-line: #d9d0c1;        /* borders — replaces every drop shadow */
+
+  /* Text — measured on --color-bg */
+  --color-ink: #2b2318;         /* 14.47:1 — headings, key values */
+  --color-body: #4a3f31;        /*  9.59:1 — labels, body copy */
+  --color-muted: #7d6e59;       /*  4.62:1 — incidental metadata ONLY (AA) */
+
+  /* Semantic — solid fills always take white text */
+  --color-primary: #1b5e20;     /* 7.87:1 on white — actions */
+  --color-primary-press: #14501a;
+  --color-primary-tint: #e4ede2;
+  --color-primary-ink: #14501a; /* 7.99:1 on primary-tint */
+
+  --color-status: #01579b;      /* 7.40:1 on white — confirmations, info */
+  --color-status-press: #014a7f;
+  --color-status-tint: #dce8f2;
+  --color-status-ink: #014a7f;  /* 7.37:1 on status-tint */
+
+  --color-warning: #a62f0a;     /* 6.93:1 on white — alert tier 1 */
+  --color-warning-press: #8c2708;
+  --color-warning-tint: #f7e4dc;
+  --color-warning-ink: #8c2708; /* 7.09:1 on warning-tint */
+
+  --color-caution: #b45309;     /* 5.02:1 on white — alert tier 2 */
+  --color-caution-press: #8a3f07;
+  --color-caution-tint: #fcefd9;
+  --color-caution-ink: #6b4100; /* 7.76:1 on caution-tint */
+
+  /* Ribbon colors are DATA, not semantics — they depict the physical coloured
+     ribbon tied on a tree to mark a fruit generation. They collide with the
+     semantic palette (blue ribbon vs status blue, red ribbon vs warning), so they
+     are separated by SHAPE: ribbons only ever render as a round swatch beside a
+     neutral label, never as a coloured pill or text. Semantic colors only ever
+     render as rectangles. Never use these for UI state. */
+  --color-ribbon-red: #d32f2f;
+  --color-ribbon-blue: #1976d2;
+  --color-ribbon-yellow: #fbc02d;
+  --color-ribbon-white: #ffffff;
 }
 
 html, body {
-  font-family: var(--font-thai);
-  background-color: #f8fafc;
-  color: #0f172a;
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-ink);
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Thai and Burmese stack vowel/tone marks above and below the baseline; a tight
+   line-height clips them. Applied globally rather than per-language so mixed
+   content (e.g. a Thai label beside a Latin tree ID) never clips. */
+body {
+  line-height: 1.6;
 }
 
 button, [role="button"] {

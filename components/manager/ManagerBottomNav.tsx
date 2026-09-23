@@ -13,21 +13,26 @@ const tabs: { href: string; labelKey: DictKey; icon: string }[] = [
   { href: "/trees",     labelKey: "navTrees",     icon: "🌳" },
 ];
 
-export function ManagerBottomNav() {
+const ownerTab: { href: string; labelKey: DictKey; icon: string } = {
+  href: "/managers", labelKey: "navManagers", icon: "🗂️",
+};
+
+export function ManagerBottomNav({ isOwner }: { isOwner?: boolean }) {
   const pathname = usePathname();
   const { lang } = useLang();
+  const visibleTabs = isOwner ? [...tabs, ownerTab] : tabs;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] sm:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden">
       <div className="flex">
-        {tabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const active = pathname === tab.href;
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium transition ${
-                active ? "text-emerald-700" : "text-slate-400"
+              className={`flex flex-1 flex-col items-center gap-1 py-2 text-xs font-semibold transition ${
+                active ? "text-primary-ink" : "text-muted"
               }`}
             >
               <span className="text-xl leading-none">{tab.icon}</span>

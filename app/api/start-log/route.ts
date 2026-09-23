@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signToken } from "@/lib/logToken";
-import type { DbWorker, DbTaskDefinition, PhotoRequirementReason } from "@/types/database";
+import type { DbWorker, DbTaskDefinition, PhotoRequirementReason, WorkerTrustTier } from "@/types/database";
 
 const BodySchema = z.object({
   treeId: z.string(),
@@ -11,8 +11,20 @@ const BodySchema = z.object({
   qrScannedAt: z.string().datetime(),
 });
 
-const FLAT_AUDIT_RATE = 0.10; // 10% for MVP — replace with tier-based rates later
 const TOKEN_TTL_MINUTES = 60;
+
+// Photo audit sampling rate per worker trust tier. Deployment config, not domain data —
+// tune without a DB write. Defaults match the original design doc.
+function auditRateFor(tier: WorkerTrustTier): number {
+  const fromEnv = {
+    trusted: process.env.PHOTO_AUDIT_RATE_TRUSTED,
+    standard: process.env.PHOTO_AUDIT_RATE_STANDARD,
+    audit: process.env.PHOTO_AUDIT_RATE_AUDIT,
+  }[tier];
+  const fallback = { trusted: 0.01, standard: 0.05, audit: 0.15 }[tier];
+  const parsed = Number(fromEnv);
+  return fromEnv !== undefined && !isNaN(parsed) ? parsed : fallback;
+}
 
 /**
  * POST /api/start-log
@@ -46,12 +58,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Task definition not found" }, { status: 404 });
   }
 
-  // Fetch worker trust tier (for future tier-based audit rate)
   const { data: worker } = await admin
     .from("workers")
     .select("trust_tier")
     .eq("worker_id", user.id)
     .single<Pick<DbWorker, "trust_tier">>();
+
+  // Least-trusted default: an unknown/missing worker row gets the highest audit rate.
+  const trustTier: WorkerTrustTier = worker?.trust_tier ?? "audit";
 
   // Decide photo requirement
   let photoRequired = false;
@@ -65,10 +79,9 @@ export async function POST(request: Request) {
       photoRequired = true;
       photoRequirementReason = "task_default";
     } else if (taskDef.photo_policy_mode === "audit_only") {
-      // MVP: flat rate. Later: use worker.trust_tier + taskDef.photo_policy_audit_rates
       auditSeed = Math.random().toString(36).slice(2);
       const roll = parseInt(auditSeed, 36) / Math.pow(36, auditSeed.length);
-      photoRequired = roll < FLAT_AUDIT_RATE;
+      photoRequired = roll < auditRateFor(trustTier);
       photoRequirementReason = photoRequired ? "random_audit" : "none";
     }
   }
@@ -92,6 +105,6 @@ export async function POST(request: Request) {
     photoRequired,
     photoRequirementReason,
     formOpenedAt,
-    workerTrustTier: worker?.trust_tier ?? "audit",
+    workerTrustTier: trustTier,
   });
 }

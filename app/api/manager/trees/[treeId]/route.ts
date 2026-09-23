@@ -1,21 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireStaff } from "@/lib/auth/requireStaff";
 import type { DbTree } from "@/types/database";
 
 // GET /api/manager/trees/:treeId — tree detail + recent logs + open alerts.
 // PATCH /api/manager/trees/:treeId — edit variety/planted_date/GPS, or retire/unretire.
 // Both require manager or owner role.
-
-async function requireManager(admin: ReturnType<typeof createAdminClient>, userId: string) {
-  const { data: profile } = await admin
-    .from("users")
-    .select("role")
-    .eq("id", userId)
-    .single();
-  return !!profile && (profile.role === "manager" || profile.role === "owner");
-}
 
 export async function GET(
   _request: Request,
@@ -23,14 +13,9 @@ export async function GET(
 ) {
   const { treeId } = await ctx.params;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const admin = createAdminClient();
-  if (!(await requireManager(admin, user.id))) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const gate = await requireStaff();
+  if (!gate.ok) return gate.response;
+  const { admin } = gate;
 
   const [{ data: tree, error: treeErr }, { data: recentLogs }, { data: openAlerts }] = await Promise.all([
     admin.from("trees").select("*").eq("tree_id", treeId).single(),
@@ -73,14 +58,9 @@ export async function PATCH(
 ) {
   const { treeId } = await ctx.params;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const admin = createAdminClient();
-  if (!(await requireManager(admin, user.id))) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const gate = await requireStaff();
+  if (!gate.ok) return gate.response;
+  const { admin } = gate;
 
   const body = await request.json().catch(() => null);
   const parsed = PatchSchema.safeParse(body);

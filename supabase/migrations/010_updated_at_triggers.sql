@@ -18,5 +18,3 @@ CREATE TRIGGER trg_assignments_updated_at BEFORE UPDATE ON public.assignments
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 CREATE TRIGGER trg_sets_updated_at BEFORE UPDATE ON public.sets
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-CREATE TRIGGER trg_protocols_updated_at BEFORE UPDATE ON public.protocols
-  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();

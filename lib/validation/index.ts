@@ -2,6 +2,7 @@ import type { DbTree, DbTaskDefinition, ValidationStatus } from "@/types/databas
 import { checkPresence } from "./presence";
 import { checkTiming } from "./timing";
 import { checkBounds } from "./bounds";
+import { checkFields } from "./fields";
 
 export interface ValidationInput {
   tree: DbTree;
@@ -47,6 +48,17 @@ export function validate(input: ValidationInput): ValidationOutput {
     taskDef: input.taskDef,
   });
   allFlags.push(...timingFlags);
+
+  // Layer 3 — Required fields present and option values legal (hard violations → reject)
+  const fieldsResult = checkFields(input.formData, input.taskDef.fields);
+  if (!fieldsResult.ok) {
+    return {
+      status: "rejected",
+      flags: allFlags,
+      gpsDistanceMeters,
+      rejectionReason: fieldsResult.error,
+    };
+  }
 
   // Layer 4 — Input bounds (hard violations → reject)
   const boundsResult = checkBounds(input.formData, input.taskDef.fields);

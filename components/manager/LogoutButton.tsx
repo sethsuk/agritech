@@ -20,7 +20,7 @@ export function LogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      className="text-sm text-slate-400 hover:text-slate-600 transition"
+      className="inline-flex min-h-11 items-center whitespace-nowrap text-sm text-muted transition hover:text-body sm:min-h-0"
     >
       {t(dict.logout, lang)}
     </button>

@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { t } from "@/lib/i18n/t";
+import { t, taskDisplayName } from "@/lib/i18n/t";
 import { WorkerHeader } from "@/components/worker/WorkerHeader";
 import { TaskFormRenderer } from "@/components/worker/TaskFormRenderer";
 import { PhotoCapture } from "@/components/worker/PhotoCapture";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict } from "@/lib/i18n/dictionary";
+import { varietyName } from "@/lib/i18n/varieties";
 import type { DbTaskDefinition, DbTree } from "@/types/database";
 
 interface StartLogResponse {
@@ -30,6 +32,7 @@ export default function TaskFormPage() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [confirmExit, setConfirmExit] = useState(false);
 
   const gpsRef = useRef<{ lat: number; long: number } | null>(null);
 
@@ -80,7 +83,10 @@ export default function TaskFormPage() {
 
   function handleBack() {
     const hasInput = Object.keys(formData).length > 0 || photoUrl !== null;
-    if (hasInput && !window.confirm(tr("exitFormConfirm"))) return;
+    if (hasInput) {
+      setConfirmExit(true);
+      return;
+    }
     router.back();
   }
 
@@ -150,7 +156,7 @@ export default function TaskFormPage() {
       <main className="mx-auto max-w-md px-4 py-6">
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+            <div key={i} className="h-24 animate-pulse rounded-lg bg-surface-alt" />
           ))}
         </div>
       </main>
@@ -163,15 +169,15 @@ export default function TaskFormPage() {
     <div className="flex min-h-dvh flex-col">
       <WorkerHeader
         variant="back"
-        title={t(taskDef.display_name, lang)}
+        title={taskDisplayName(taskDef, lang)}
         onBack={handleBack}
       />
 
       <main className="mx-auto w-full max-w-md flex-1 px-4 pt-4 pb-32">
       {/* Tree context */}
-      <p className="mb-4 flex items-center gap-2 text-sm text-slate-500">
-        <span className="text-xl">{taskDef.display_name.icon ?? "📋"}</span>
-        {tree.tree_id} · {tree.zone}{tree.side} · {tree.variety}
+      <p className="mb-4 flex items-center gap-2 text-lg text-muted">
+        <span className="text-xl">{taskDef.icon ?? "📋"}</span>
+        {tree.tree_id} · {tree.zone}{tree.side} · {varietyName(tree.variety, lang)}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -183,28 +189,28 @@ export default function TaskFormPage() {
           }
         />
 
-        {/* Photo section */}
-        {startLog.photoRequired && (
-          <div className="rounded-2xl bg-amber-50 p-4">
-            <p className="mb-3 text-sm font-medium text-amber-800">
-              📸 {startLog.photoRequirementReason === "random_audit"
-                ? tr("photoAuditNotice")
-                : tr("photoRequiredNotice")}
-            </p>
-            <PhotoCapture
-              photoUrl={photoUrl}
-              onChange={setPhotoUrl}
-            />
-          </div>
-        )}
+        {/* Photo section — always available; only blocks submission when required */}
+        <div className={`rounded-lg p-4 ${startLog.photoRequired ? "bg-caution-tint" : "bg-surface-alt"}`}>
+          <p className={`mb-3 text-lg font-semibold ${startLog.photoRequired ? "text-caution-ink" : "text-body"}`}>
+            📸 {startLog.photoRequired
+              ? (startLog.photoRequirementReason === "random_audit"
+                  ? tr("photoAuditNotice")
+                  : tr("photoRequiredNotice"))
+              : tr("photoOptionalNotice")}
+          </p>
+          <PhotoCapture
+            photoUrl={photoUrl}
+            onChange={setPhotoUrl}
+          />
+        </div>
 
         {/* Sticky submit */}
-        <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
+        <div className="fixed inset-x-0 bottom-0 border-t border-line bg-surface p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
           <div className="mx-auto max-w-md">
             <button
               type="submit"
               disabled={submitting}
-              className="h-14 w-full rounded-2xl bg-emerald-600 text-lg font-semibold text-white transition active:bg-emerald-700 disabled:bg-slate-300"
+              className="h-15 w-full rounded-lg bg-primary text-lg font-semibold text-white transition active:bg-primary-press disabled:bg-surface-press"
             >
               {submitting ? tr("submitting") : tr("submitButton")}
             </button>
@@ -212,6 +218,16 @@ export default function TaskFormPage() {
         </div>
       </form>
       </main>
+
+      <ConfirmDialog
+        open={confirmExit}
+        title={tr("exitFormTitle")}
+        message={tr("exitFormConfirm")}
+        confirmLabel={tr("exitFormDiscard")}
+        destructive
+        onConfirm={() => { setConfirmExit(false); router.back(); }}
+        onCancel={() => setConfirmExit(false)}
+      />
     </div>
   );
 }

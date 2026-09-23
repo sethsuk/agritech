@@ -1,5 +1,5 @@
 CREATE TABLE public.sets (
-  set_id TEXT PRIMARY KEY,            -- e.g. 'set_a104_2026_red'
+  set_id TEXT PRIMARY KEY,            -- e.g. 'set_al137_2026_red'
   tree_id TEXT NOT NULL REFERENCES public.trees(tree_id),
   color generation_color NOT NULL,
   season TEXT NOT NULL,               -- e.g. '2026-main'
@@ -19,8 +19,7 @@ CREATE TABLE public.sets (
   harvest_log_ids UUID[] NOT NULL DEFAULT '{}',
   harvested_at TIMESTAMPTZ,
 
-  -- Denormalized event history (authoritative copy is task_logs)
-  history JSONB NOT NULL DEFAULT '[]',
+  -- Event timeline lives in public.set_events (see 008), not a JSONB array here.
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

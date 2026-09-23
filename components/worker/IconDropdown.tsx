@@ -19,14 +19,14 @@ export function IconDropdown({ options, value, onChange }: Props) {
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
-          className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-left transition ${
+          className={`flex items-center gap-3 rounded-lg px-4 py-3 text-left transition ${
             value === opt.value
-              ? "bg-emerald-50 ring-2 ring-emerald-400 text-emerald-900"
-              : "bg-slate-50 text-slate-700 active:bg-slate-100"
+              ? "bg-primary-tint ring-2 ring-primary text-primary-ink"
+              : "bg-surface-alt text-body active:bg-surface-alt"
           }`}
         >
           <span className="text-xl">{opt.icon}</span>
-          <span className="text-sm font-medium">{t(opt.label, lang)}</span>
+          <span className="text-lg font-semibold">{t(opt.label, lang)}</span>
         </button>
       ))}
     </div>
