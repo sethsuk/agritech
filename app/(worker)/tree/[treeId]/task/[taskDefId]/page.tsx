@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict } from "@/lib/i18n/dictionary";
 import { varietyName } from "@/lib/i18n/varieties";
+import { firstMissingRequiredField } from "@/lib/validation/fields";
 import type { DbTaskDefinition, DbTree } from "@/types/database";
 
 interface StartLogResponse {
@@ -99,12 +100,12 @@ export default function TaskFormPage() {
       return;
     }
 
-    // Validate required fields
-    for (const field of taskDef.fields) {
-      if (field.required && (formData[field.field_id] === undefined || formData[field.field_id] === "")) {
-        toast.error(`${tr("fieldRequiredError")}: ${t(field.label, lang)}`);
-        return;
-      }
+    // Same rule the server applies in checkFields — one definition, so the form can't
+    // enable a submission the API will reject.
+    const missing = firstMissingRequiredField(formData, taskDef.fields);
+    if (missing) {
+      toast.error(`${tr("fieldRequiredError")}: ${t(missing.label, lang)}`);
+      return;
     }
 
     setSubmitting(true);

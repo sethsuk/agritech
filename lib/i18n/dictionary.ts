@@ -275,6 +275,14 @@ export const dict = {
   viewRecordButton: { th: "ดูรายละเอียด", my: "အသေးစိတ် ကြည့်ရန်", en: "View" },
   backToMyLogs: { th: "กลับไปบันทึกของฉัน", my: "ကျွန်ုပ်၏ မှတ်တမ်းများသို့ ပြန်သွားရန်", en: "Back to my records" },
   reasonRequiredError: { th: "กรุณาระบุเหตุผล", my: "အကြောင်းရင်း ဖော်ပြပါ", en: "Please provide a reason" },
+  // Tree health — stated as open-alert status, not an invented score. See lib/derived/treeHealth.ts.
+  healthOk: { th: "ปกติ", my: "ပုံမှန်", en: "OK" },
+  healthWatch: { th: "เฝ้าระวัง", my: "စောင့်ကြည့်ရန်", en: "Watch" },
+  healthAttention: { th: "ต้องดูแลด่วน", my: "အရေးပေါ် ကြည့်ရန်", en: "Needs attention" },
+
+  // Worker reliability windows shown side by side.
+  reliabilityRecent: { th: "90 วันล่าสุด", my: "နောက်ဆုံး ၉၀ ရက်", en: "Last 90 days" },
+  reliabilityAllTime: { th: "ทั้งหมด", my: "စုစုပေါင်း", en: "All time" },
 } as const satisfies Record<string, I18nString>;
 
 export type DictKey = keyof typeof dict;

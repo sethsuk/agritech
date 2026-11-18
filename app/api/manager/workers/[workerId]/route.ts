@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth/requireStaff";
+import { reliabilityFor } from "@/lib/derived";
 import type { DbUser, DbWorker } from "@/types/database";
 
 // GET /api/manager/workers/:workerId — worker detail + recent logs.
@@ -17,7 +18,7 @@ export async function GET(
   if (!gate.ok) return gate.response;
   const { admin } = gate;
 
-  const [{ data: worker, error: workerErr }, { data: recentLogs }] = await Promise.all([
+  const [{ data: worker, error: workerErr }, { data: recentLogs }, reliability] = await Promise.all([
     admin.from("workers").select("*, users(id, display_name, role)").eq("worker_id", workerId).single(),
     admin
       .from("task_logs")
@@ -25,13 +26,15 @@ export async function GET(
       .eq("worker_id", workerId)
       .order("submitted_at", { ascending: false })
       .limit(10),
+    // Computed here rather than read off worker.reliability_* — those columns have no writer.
+    reliabilityFor(admin, workerId),
   ]);
 
   if (workerErr || !worker) {
     return NextResponse.json({ error: "Worker not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ worker, recentLogs: recentLogs ?? [] });
+  return NextResponse.json({ worker, recentLogs: recentLogs ?? [], reliability });
 }
 
 const PatchSchema = z.object({

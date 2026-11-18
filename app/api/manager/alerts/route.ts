@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth/requireStaff";
+import { refreshTreeDerivedState } from "@/lib/derived";
 import type { AlertStatus } from "@/types/database";
 
 // GET /api/manager/alerts — paginated alerts by status, newest first.
@@ -59,12 +60,15 @@ export async function PATCH(request: Request) {
       resolution_notes: notes ?? null,
     })
     .eq("alert_id", alertId)
-    .select("alert_id")
+    .select("alert_id, tree_id")
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   // Previously returned ok:true even for an alert_id that matched nothing.
   if (!updated) return NextResponse.json({ error: "Alert not found" }, { status: 404 });
+
+  // Closing an alert changes the tree's open-alert count, which the tree list reads.
+  if (updated.tree_id) await refreshTreeDerivedState(admin, updated.tree_id);
 
   return NextResponse.json({ ok: true });
 }
