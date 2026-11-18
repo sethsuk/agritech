@@ -418,6 +418,16 @@ export const dict = {
   deactivateManagerMsg: { th: "ปิดใช้งาน {name}? ผู้จัดการคนนี้จะเข้าสู่ระบบไม่ได้อีก (เปิดใช้งานใหม่ได้ภายหลัง)", my: "{name} ကို ပိတ်မလား? လော့ဂ်အင်ဝင်နိုင်တော့မည် မဟုတ်ပါ (နောက်မှ ပြန်ဖွင့်နိုင်)", en: "Deactivate {name}? They won't be able to log in (you can reactivate them later)." },
   reactivateManagerMsg: { th: "เปิดใช้งาน {name} อีกครั้ง?", my: "{name} ကို ပြန်လည်အသုံးပြုမလား?", en: "Reactivate {name}?" },
   passwordCopyText: { th: "ชื่อผู้ใช้: {u}\nรหัสผ่าน: {p}", my: "အသုံးပြုသူအမည်: {u}\nစကားဝှက်: {p}", en: "Username: {u}\nPassword: {p}" },
+  crashTitle: { th: "เกิดข้อผิดพลาด", my: "အမှားတစ်ခု ဖြစ်ပွားခဲ့သည်", en: "Something went wrong" },
+  crashBody: { th: "ข้อมูลที่บันทึกแล้วไม่หายไป ลองอีกครั้ง หรือกลับไปหน้าแรก", my: "သိမ်းပြီးသော ဒေတာများ မပျောက်ပါ၊ ထပ်စမ်းပါ သို့မဟုတ် ပင်မစာမျက်နှာသို့ ပြန်သွားပါ", en: "Nothing you already saved was lost. Try again, or go back to the start." },
+  goHome: { th: "กลับหน้าแรก", my: "ပင်မစာမျက်နှာ", en: "Go to start" },
+  notFoundTitle: { th: "ไม่พบหน้านี้", my: "ဤစာမျက်နှာကို ရှာမတွေ့ပါ", en: "Page not found" },
+  notFoundBody: { th: "ลิงก์อาจผิดหรือหน้านี้ถูกย้ายแล้ว", my: "လင့်ခ် မှားနေခြင်း သို့မဟုတ် ရွှေ့ထားခြင်း ဖြစ်နိုင်သည်", en: "The link may be wrong, or the page has moved." },
+  draftRestored: { th: "กู้คืนข้อมูลที่ยังไม่ได้บันทึกแล้ว", my: "မသိမ်းရသေးသော အချက်အလက်များကို ပြန်ယူထားသည်", en: "Your unsaved entries were restored" },
+  discardDraft: { th: "เริ่มใหม่", my: "အသစ်ပြန်စ", en: "Start over" },
+  savedBannerTitle: { th: "บันทึกแล้ว ✓", my: "သိမ်းပြီးပါပြီ ✓", en: "Saved ✓" },
+  scanNextTree: { th: "📷 สแกนต้นถัดไป", my: "📷 နောက်ပင်ကို စကင်ဖတ်ရန်", en: "📷 Scan the next tree" },
+  orAnotherTaskHere: { th: "หรือเลือกงานอื่นของต้นนี้ด้านล่าง", my: "သို့မဟုတ် ဤပင်အတွက် အခြားအလုပ်ကို အောက်တွင် ရွေးပါ", en: "Or pick another task for this tree below" },
 } as const satisfies Record<string, I18nString>;
 
 export type DictKey = keyof typeof dict;

@@ -20,8 +20,8 @@ test.describe.serial("worker submission, correction, and void flow", () => {
     await page.getByRole("button", { name: /^\+\d/ }).click();
     await page.getByRole("button", { name: th("submitButton") }).click();
 
-    await expect(page.getByText(th("submitSuccess")).or(page.getByText(th("submitFlagged")))).toBeVisible();
-    await expect(page).toHaveURL(new RegExp(`/tree/${TREE_ID}$`));
+    await expect(page.getByText(th("savedBannerTitle")).or(page.getByText(th("submitFlagged")).first())).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/tree/${TREE_ID}(\\?saved=1)?$`));
   });
 
   test("submitted log appears in my-logs with the right value", async ({ page }) => {

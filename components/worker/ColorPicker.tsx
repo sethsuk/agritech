@@ -3,6 +3,7 @@
 import type { TaskFieldOption } from "@/types/database";
 import { t } from "@/lib/i18n/t";
 import { useLang } from "@/lib/i18n/LanguageContext";
+import { SelectedCheck } from "./SelectedCheck";
 
 type Props = {
   options: TaskFieldOption[];
@@ -53,9 +54,7 @@ export function ColorPicker({ options, value, onChange, disabledValues = [], dis
             }`}
           >
             {/* A ✓ as well as the ring: colour alone is unreadable in direct sun. */}
-            {selected && (
-              <span aria-hidden className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">✓</span>
-            )}
+            {selected && <SelectedCheck />}
             <div
               className={`h-10 w-10 rounded-full ${colorBg[opt.value] ?? "bg-surface-press"} ${
                 opt.value === "white" ? "border border-line" : ""

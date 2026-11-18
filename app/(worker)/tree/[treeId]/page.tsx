@@ -1,6 +1,7 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import Link from "next/link";
 import { taskDisplayName } from "@/lib/i18n/t";
 import { useT } from "@/lib/i18n/LanguageContext";
@@ -24,7 +25,16 @@ const swatch: Record<string, string> = {
 const NEEDS_OPEN_SET = new Set(["harvest", "fruit_check"]);
 
 export default function TreeDetailPage() {
+  return (
+    <Suspense>
+      <TreeDetail />
+    </Suspense>
+  );
+}
+
+function TreeDetail() {
   const { treeId } = useParams<{ treeId: string }>();
+  const justSaved = useSearchParams().get("saved") === "1";
   const router = useRouter();
   const { lang, tr } = useT();
   const treeQuery = useWorkerTree(treeId);
@@ -70,6 +80,17 @@ export default function TreeDetailPage() {
       <WorkerHeader variant="back" title={`${tr("treeTitlePrefix")} ${tree.tree_id}`} onBack={backToScan} showLanguageToggle />
 
       <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
+        {justSaved && (
+          // After a submit: the usual next step is the next tree, so make it one big tap.
+          <div role="status" className="mb-6 rounded-lg border-2 border-primary bg-primary-tint p-4">
+            <p className="text-lg font-bold text-primary-ink">{tr("savedBannerTitle")}</p>
+            <button onClick={backToScan} className="mt-3 h-15 w-full rounded-lg bg-primary text-lg font-semibold text-white active:bg-primary-press">
+              {tr("scanNextTree")}
+            </button>
+            <p className="mt-2 text-sm text-primary-ink">{tr("orAnotherTaskHere")}</p>
+          </div>
+        )}
+
         <div className="mb-6 rounded-lg border border-line bg-surface p-4">
           <p className="text-2xl font-bold text-ink">{tree.tree_id}</p>
           <p className="text-lg text-muted">

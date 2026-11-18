@@ -15,7 +15,7 @@ test.describe("worker screens", () => {
       await openTask(page, treeId, "watering_v1");
       await setNumber(page, "ระยะเวลา (นาที)", 10);
       await submitTask(page);
-      await expect(page).toHaveURL(new RegExp(`/tree/${treeId}$`));
+      await expect(page).toHaveURL(new RegExp(`/tree/${treeId}(\\?saved=1)?$`));
 
       const { data } = await admin.from("task_logs").select("submitted_at").eq("tree_id", treeId)
         .order("submitted_at", { ascending: false }).limit(1).single();
@@ -44,7 +44,7 @@ test.describe("worker screens", () => {
     await openTask(page, treeId, "watering_v1");
     await setNumber(page, "ระยะเวลา (นาที)", 5);
     await submitTask(page);
-    await expect(page).toHaveURL(new RegExp(`/tree/${treeId}$`));
+    await expect(page).toHaveURL(new RegExp(`/tree/${treeId}(\\?saved=1)?$`));
     await page.goto("/my-logs");
     await page.locator("main li a").filter({ hasText: treeId }).first().click();
     await page.getByRole("button", { name: th("correctButton") }).click();

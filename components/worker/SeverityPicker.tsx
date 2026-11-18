@@ -3,6 +3,7 @@
 import type { TaskFieldOption } from "@/types/database";
 import { t } from "@/lib/i18n/t";
 import { useLang } from "@/lib/i18n/LanguageContext";
+import { SelectedCheck } from "./SelectedCheck";
 
 type Props = {
   options: TaskFieldOption[];
@@ -23,19 +24,22 @@ const severityColor: Record<string, string> = {
 export function SeverityPicker({ options, value, onChange }: Props) {
   const { lang } = useLang();
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-3" role="radiogroup">
       {options.map((opt) => (
         <button
           key={opt.value}
           type="button"
+          role="radio"
+          aria-checked={value === opt.value}
           onClick={() => onChange(opt.value)}
-          className={`flex flex-col items-center gap-2 rounded-lg p-4 transition ${
+          className={`relative flex min-h-15 flex-col items-center gap-2 rounded-lg p-4 transition ${
             value === opt.value
               ? `ring-4 ${severityColor[opt.value] ?? "ring-primary bg-primary-tint text-primary-ink"} border border-line`
               : "bg-surface-alt text-body"
           }`}
         >
-          <span className="text-3xl">{opt.icon}</span>
+          {value === opt.value && <SelectedCheck />}
+          <span aria-hidden className="text-3xl">{opt.icon}</span>
           <span className="text-lg font-semibold">{t(opt.label, lang)}</span>
         </button>
       ))}

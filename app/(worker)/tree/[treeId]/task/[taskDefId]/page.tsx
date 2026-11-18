@@ -25,6 +25,17 @@ interface StartLogResponse {
   photoRequirementReason: string;
 }
 
+/** Unsaved entries survive Back, reload, or the phone killing the tab (per tree + task). */
+const draftKey = (treeId: string, taskDefId: string) => `draft:${treeId}:${taskDefId}`;
+type Draft = { formData: Record<string, unknown>; photoUrl: string | null };
+
+function readDraft(key: string): Draft | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as Draft) : null;
+  } catch { return null; }
+}
+
 type GpsState = { status: "reading" } | { status: "ok"; lat: number; long: number; accuracy: number } | { status: "off" };
 
 export default function TaskFormPage() {
@@ -45,8 +56,29 @@ export default function TaskFormPage() {
   const [fieldError, setFieldError] = useState<{ field: string; message: string } | null>(null);
   const [gps, setGps] = useState<GpsState>({ status: "reading" });
   const submittedRef = useRef(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const key = draftKey(treeId, taskDefId);
 
   const dirty = Object.keys(formData).length > 0 || photoUrl !== null;
+
+  // Restore a draft once on open; afterwards keep it in step with every change.
+  useEffect(() => {
+    const draft = readDraft(key);
+    if (draft && (Object.keys(draft.formData).length > 0 || draft.photoUrl)) {
+      setFormData(draft.formData);
+      setPhotoUrl(draft.photoUrl);
+      setDraftRestored(true);
+    }
+  }, [key]);
+  useEffect(() => {
+    try {
+      if (submittedRef.current) return;
+      if (dirty) sessionStorage.setItem(key, JSON.stringify({ formData, photoUrl } satisfies Draft));
+      else sessionStorage.removeItem(key);
+    } catch { /* storage blocked — drafts are a convenience */ }
+  }, [key, formData, photoUrl, dirty]);
+
+  const clearDraft = () => { try { sessionStorage.removeItem(key); } catch { /* ignore */ } };
 
   // --- GPS: read on open, show the result, allow retry (it used to fail silently and
   // quietly flag the log as gps_missing). ---
@@ -82,7 +114,7 @@ export default function TaskFormPage() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirty]);
 
-  const goToTree = () => router.replace(`/tree/${treeId}`);
+  const goToTree = (saved = false) => router.replace(`/tree/${treeId}${saved ? "?saved=1" : ""}`);
 
   function handleBack() {
     if (dirty) setConfirmExit(true);
@@ -126,11 +158,13 @@ export default function TaskFormPage() {
         },
       });
       submittedRef.current = true;
-      toast.success(data.validationFlags?.length ? tr("submitFlagged") : tr("submitSuccess"));
+      clearDraft();
+      if (data.validationFlags?.length) toast.success(tr("submitFlagged"));
       queryClient.invalidateQueries({ queryKey: qk.workerTree(treeId) });
       queryClient.invalidateQueries({ queryKey: qk.myLogs });
       // replace, not push: Back from the tree screen shouldn't reopen a submitted form.
-      goToTree();
+      // ?saved=1 shows the "saved — scan the next tree" banner there.
+      goToTree(true);
     } catch (err) {
       const body = errorBody(err);
       if (body.error === "submission_rejected" && typeof body.field === "string") {
@@ -158,7 +192,7 @@ export default function TaskFormPage() {
   if (loadError) {
     return (
       <div className="flex min-h-dvh flex-col">
-        <WorkerHeader variant="back" title={tr("formLoadError")} onBack={goToTree} hideLogout />
+        <WorkerHeader variant="back" title={tr("formLoadError")} onBack={() => goToTree()} hideLogout />
         <main className="mx-auto w-full max-w-md px-4 py-6">
           <ErrorState error={loadError} onRetry={() => { treeQuery.refetch(); defsQuery.refetch(); openForm(); }} />
         </main>
@@ -170,7 +204,7 @@ export default function TaskFormPage() {
   if (!tree || !taskDef || !startLog) {
     return (
       <div className="flex min-h-dvh flex-col">
-        <WorkerHeader variant="back" title="…" onBack={goToTree} hideLogout />
+        <WorkerHeader variant="back" title="…" onBack={() => goToTree()} hideLogout />
         <main className="mx-auto w-full max-w-md px-4 py-6" aria-busy>
           <div className="space-y-4">{[1, 2, 3].map((i) => <div key={i} className="h-24 animate-pulse rounded-lg bg-surface-alt" />)}</div>
         </main>
@@ -190,6 +224,19 @@ export default function TaskFormPage() {
         </p>
 
         <GpsChip gps={gps} onRetry={readGps} />
+
+        {draftRestored && (
+          <div role="status" className="mb-4 flex items-center justify-between gap-2 rounded-lg border border-status bg-status-tint p-3 text-sm text-status-ink">
+            <span>↺ {tr("draftRestored")}</span>
+            <button
+              type="button"
+              onClick={() => { setFormData({}); setPhotoUrl(null); setDraftRestored(false); clearDraft(); }}
+              className="min-h-11 flex-shrink-0 rounded-lg border border-line bg-surface px-3 font-semibold text-body"
+            >
+              {tr("discardDraft")}
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <RequiredLegend />
@@ -234,7 +281,7 @@ export default function TaskFormPage() {
         message={tr("exitFormConfirm")}
         confirmLabel={tr("exitFormDiscard")}
         destructive
-        onConfirm={() => { setConfirmExit(false); submittedRef.current = true; goToTree(); }}
+        onConfirm={() => { setConfirmExit(false); submittedRef.current = true; clearDraft(); goToTree(); }}
         onCancel={() => setConfirmExit(false)}
       />
     </div>

@@ -27,7 +27,7 @@ test.describe.serial("bloom → fruit count → harvest lifecycle", () => {
     await field(page, "สีเชือก").getByRole("radio", { name: /แดง/ }).click();
     await setNumber(page, "จำนวนดอก", 30);
     await submitTask(page);
-    await expect(page).toHaveURL(new RegExp(`/tree/${treeId}$`));
+    await expect(page).toHaveURL(new RegExp(`/tree/${treeId}(\\?saved=1)?$`));
     await expect(page.getByText(th("setRemaining", { n: 30 }))).toBeVisible();
   });
 
@@ -100,7 +100,7 @@ test.describe.serial("bloom → fruit count → harvest lifecycle", () => {
     await a.blur();
     await field(page, "เก็บครั้งสุดท้ายของชุดนี้").getByRole("radio", { name: new RegExp(th("yesLabel")) }).click();
     await submitTask(page);
-    await expect(page).toHaveURL(new RegExp(`/tree/${treeId}$`));
+    await expect(page).toHaveURL(new RegExp(`/tree/${treeId}(\\?saved=1)?$`));
 
     const { data: set } = await admin.from("set_state").select("*").eq("tree_id", treeId).single();
     expect(set.close_reason).toBe("final_pick");

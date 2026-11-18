@@ -10,7 +10,7 @@ test("bug 9 — a worker's new log shows up in the manager's workers view", asyn
   await openTask(page, treeId, "watering_v1");
   await setNumber(page, "ระยะเวลา (นาที)", 15);
   await submitTask(page);
-  await expect(page).toHaveURL(new RegExp(`/tree/${treeId}$`));
+  await expect(page).toHaveURL(new RegExp(`/tree/${treeId}(\\?saved=1)?$`));
 
   await page.context().clearCookies();
   await loginAs(page, "manager");
