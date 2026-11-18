@@ -11,7 +11,7 @@ import { Client } from "pg";
 import { config } from "dotenv";
 import { resolve } from "path";
 
-config({ path: resolve(process.cwd(), ".env.local") });
+config({ path: resolve(process.cwd(), process.env.ENV_FILE ?? ".env.local"), quiet: true });
 
 const ZONE = "A";
 const SIDES: { side: "L" | "R"; rows: number }[] = [

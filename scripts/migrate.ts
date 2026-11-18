@@ -3,7 +3,8 @@ import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { config } from "dotenv";
 
-config({ path: ".env.local" });
+// ENV_FILE selects which database to target (default .env.local = dev); see scripts/setup-prod.ts.
+config({ path: process.env.ENV_FILE ?? ".env.local", quiet: true });
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {

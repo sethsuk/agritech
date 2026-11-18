@@ -17,7 +17,8 @@
     "test:e2e": "playwright test",
     "db:reset:dev": "tsx scripts/reset-db.ts",
     "test:sql": "tsx scripts/test-sql.ts",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "setup:prod": "tsx scripts/setup-prod.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
