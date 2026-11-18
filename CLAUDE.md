@@ -88,6 +88,12 @@ lockout/CAPTCHA). The deterministic photo-audit draw (`lib/photoAudit.ts`) can b
   `sync_set`, `set_available_at`, `dashboard_snapshot`; (`016`) `rollup_apply`, `rollup_rebuild`,
   `fruit_by_grade`. Migrations from `015` on are additive and re-runnable (`IF NOT EXISTS`, self
   backfilling) — prefer that over editing old table migrations, so deployed DBs never need a wipe.
+  `018_security_hardening.sql` runs last on every `db:migrate`: it pins `search_path` on every
+  function in `public` (a `CREATE OR REPLACE` resets it, so it must re-run after 013/014/016),
+  restricts all RLS policies to `TO authenticated`, and revokes anon/`worker_zones` access to the RLS
+  helper functions. New functions are covered automatically; `tests/sql/05_*` fails if one isn't.
+  Write new RLS policies `TO authenticated` and new RPCs with `REVOKE EXECUTE … FROM PUBLIC, anon,
+  authenticated` (see the end of 014).
 - `docs/PLAN.md` describes an **earlier iteration** of the data model (and `prisma/schema.prisma`,
   now deleted, described the same dead design). Don't use it as a reference for the current schema.
 - `docs/durian_build_spec.md`, `docs/durian_schema.md`, and `docs/durian_system_docs.md` document the
