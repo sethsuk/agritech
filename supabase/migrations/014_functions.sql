@@ -68,38 +68,151 @@ END
 $$;
 
 -- ---------------------------------------------------------------------------------
+-- set_available_at — fruit that should be on a set just before `p_at`: the latest
+-- effective fruit count before then (or the bloom's flowers if never counted), minus
+-- harvests between that count and `p_at`. `p_exclude` leaves one log out, so a
+-- correction is checked against the state *as it was* when that record was made.
+--
+-- The single definition of "available" for both new submissions and corrections —
+-- they used to disagree (corrections skipped the domain rules entirely).
+-- ---------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.set_available_at(p_set UUID, p_at TIMESTAMPTZ, p_exclude UUID DEFAULT NULL)
+RETURNS INTEGER LANGUAGE plpgsql STABLE AS $$
+DECLARE
+  v_count INTEGER;
+  v_since TIMESTAMPTZ;
+  v_harvested INTEGER;
+BEGIN
+  SELECT (e.form_data->>'fruit_count')::int, e.submitted_at INTO v_count, v_since
+  FROM public.effective_task_logs e
+  WHERE e.set_id = p_set AND e.task_type = 'fruit_check' AND e.submitted_at < p_at
+    AND e.log_id IS DISTINCT FROM p_exclude AND (e.form_data->>'fruit_count') ~ '^\d+$'
+  ORDER BY e.submitted_at DESC
+  LIMIT 1;
+
+  IF v_since IS NULL THEN
+    SELECT CASE WHEN (e.form_data->>'flower_count') ~ '^\d+$' THEN (e.form_data->>'flower_count')::int END
+    INTO v_count
+    FROM public.sets s JOIN public.effective_task_logs e ON e.log_id = s.bloom_log_id
+    WHERE s.set_id = p_set;
+    v_since := '-infinity';
+  END IF;
+
+  SELECT COALESCE(SUM(public.grade_total(e.form_data->'grade_counts')), 0)::int INTO v_harvested
+  FROM public.effective_task_logs e
+  WHERE e.set_id = p_set AND e.task_type = 'harvest'
+    AND e.submitted_at > v_since AND e.submitted_at < p_at
+    AND e.log_id IS DISTINCT FROM p_exclude;
+
+  RETURN COALESCE(v_count, 0) - v_harvested;
+END
+$$;
+
+-- ---------------------------------------------------------------------------------
+-- sync_pest_alert — make a pest inspection's alert match its (current) severity:
+-- moderate → tier 2, severe → tier 1, none/mild → no open alert. Used on submit and on
+-- correction, so changing "mild" to "severe" raises the alert and the reverse clears it.
+-- ---------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.sync_pest_alert(
+  p_root UUID, p_severity TEXT, p_tree TEXT, p_worker UUID
+) RETURNS VOID LANGUAGE plpgsql AS $$
+DECLARE
+  v_alert UUID;
+  v_tier alert_tier;
+BEGIN
+  SELECT alert_id INTO v_alert FROM public.alerts
+  WHERE triggered_by_log_id = p_root AND category = 'farm_health' AND subtype LIKE 'pest\_%'
+    AND status IN ('open', 'reviewed')
+  LIMIT 1;
+
+  IF p_severity IN ('moderate', 'severe') THEN
+    v_tier := CASE WHEN p_severity = 'severe' THEN 'tier_1' ELSE 'tier_2' END;
+    IF v_alert IS NULL THEN
+      INSERT INTO public.alerts (tier, category, subtype, tree_id, worker_id, triggered_by_log_id)
+      VALUES (v_tier, 'farm_health', 'pest_' || p_severity, p_tree, p_worker, p_root);
+    ELSE
+      UPDATE public.alerts SET tier = v_tier, subtype = 'pest_' || p_severity WHERE alert_id = v_alert;
+    END IF;
+  ELSIF v_alert IS NOT NULL THEN
+    UPDATE public.alerts
+    SET status = 'dismissed', resolution_action_taken = 'corrected', resolution_resolved_at = NOW()
+    WHERE alert_id = v_alert;
+  END IF;
+END
+$$;
+
+-- Keep a harvest's over-harvest alert in step with its flag (raise once / clear on fix).
+CREATE OR REPLACE FUNCTION public.sync_over_harvest_alert(
+  p_root UUID, p_exceeds BOOLEAN, p_tree TEXT, p_worker UUID
+) RETURNS VOID LANGUAGE plpgsql AS $$
+BEGIN
+  IF p_exceeds THEN
+    IF NOT EXISTS (SELECT 1 FROM public.alerts WHERE triggered_by_log_id = p_root
+                   AND subtype = 'harvest_exceeds_set' AND status IN ('open', 'reviewed')) THEN
+      INSERT INTO public.alerts (tier, category, subtype, tree_id, worker_id, triggered_by_log_id)
+      VALUES ('tier_2', 'compliance', 'harvest_exceeds_set', p_tree, p_worker, p_root);
+    END IF;
+  ELSE
+    UPDATE public.alerts
+    SET status = 'dismissed', resolution_action_taken = 'corrected', resolution_resolved_at = NOW()
+    WHERE triggered_by_log_id = p_root AND subtype = 'harvest_exceeds_set' AND status IN ('open', 'reviewed');
+  END IF;
+END
+$$;
+
+-- ---------------------------------------------------------------------------------
 -- submit_task_log(p) — insert a validated log and all its consequences atomically.
 --
 -- p: the task_logs columns as JSON (tree_id, task_def_id, task_type, worker_id,
---    submitted_at, form_opened_at, qr_scanned_at, qr_value, gps_*, form_data,
---    photo_*, validation_status, validation_flags, notes_text).
--- Returns {log_id, validation_status, validation_flags, set_id} or {error, ...}.
+--    submission_id, submitted_at, form_opened_at, qr_scanned_at, qr_value, gps_*,
+--    form_data, photo_*, validation_status, validation_flags, notes_text).
+-- Returns {log_id, validation_status, validation_flags, set_id[, duplicate]} or {error, ...}.
 -- ---------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.submit_task_log(p JSONB)
 RETURNS JSONB LANGUAGE plpgsql AS $$
 DECLARE
-  v_type    TEXT := p->>'task_type';
-  v_tree    TEXT := p->>'tree_id';
-  v_worker  UUID := (p->>'worker_id')::uuid;
-  v_form    JSONB := COALESCE(p->'form_data', '{}'::jsonb);
-  v_flags   TEXT[] := COALESCE(ARRAY(SELECT jsonb_array_elements_text(p->'validation_flags')), '{}');
-  v_status  validation_status := (p->>'validation_status')::validation_status;
-  v_variety TEXT;
-  v_color   generation_color;
-  v_set_id  UUID;
-  v_set     RECORD;
-  v_count   INTEGER;
-  v_total   INTEGER;
-  v_days    INTEGER;
-  v_bloom   DATE;
-  v_log_id  UUID;
-  v_fraud   TEXT;
+  v_type       TEXT := p->>'task_type';
+  v_tree       TEXT := p->>'tree_id';
+  v_worker     UUID := (p->>'worker_id')::uuid;
+  v_submission UUID := NULLIF(p->>'submission_id', '')::uuid;
+  v_at         TIMESTAMPTZ := (p->>'submitted_at')::timestamptz;
+  v_form       JSONB := COALESCE(p->'form_data', '{}'::jsonb);
+  v_flags      TEXT[] := COALESCE(ARRAY(SELECT jsonb_array_elements_text(p->'validation_flags')), '{}');
+  v_status     validation_status := (p->>'validation_status')::validation_status;
+  v_variety    TEXT;
+  v_color      generation_color;
+  v_set_id     UUID;
+  v_open       BOOLEAN;
+  v_available  INTEGER;
+  v_count      INTEGER;
+  v_total      INTEGER;
+  v_days       INTEGER;
+  v_bloom      DATE;
+  v_log_id     UUID;
+  v_existing   RECORD;
+  v_fraud      TEXT;
 BEGIN
-  -- Lock the tree row: serializes concurrent submissions for one tree, so the
-  -- "is this ribbon free / how much is left" checks below cannot race.
+  -- Lock the tree row: serializes every set-touching write for one tree (submit, correct,
+  -- void all take this lock first), so the checks below can't race. A submission token is
+  -- bound to one tree, so this also serializes retries of the same submission.
   SELECT variety INTO v_variety FROM public.trees WHERE tree_id = v_tree FOR UPDATE;
   IF NOT FOUND THEN
     RETURN jsonb_build_object('error', 'tree_not_found');
+  END IF;
+
+  -- Idempotency: the same form submitted twice returns the first result.
+  IF v_submission IS NOT NULL THEN
+    SELECT log_id, validation_status, validation_flags INTO v_existing
+    FROM public.task_logs WHERE submission_id = v_submission;
+    IF FOUND THEN
+      RETURN jsonb_build_object(
+        'log_id', v_existing.log_id,
+        'validation_status', v_existing.validation_status,
+        'validation_flags', to_jsonb(v_existing.validation_flags),
+        'set_id', public.set_of_log(v_existing.log_id),
+        'duplicate', true
+      );
+    END IF;
   END IF;
 
   IF v_type = 'bloom_log' THEN
@@ -119,10 +232,11 @@ BEGIN
     EXCEPTION WHEN others THEN
       v_set_id := NULL;
     END;
-    SELECT * INTO v_set FROM public.set_state WHERE set_id = v_set_id;
-    IF NOT FOUND OR v_set.tree_id <> v_tree OR v_set.closed_at IS NOT NULL THEN
+    SELECT (closed_at IS NULL) INTO v_open FROM public.sets WHERE set_id = v_set_id AND tree_id = v_tree;
+    IF NOT COALESCE(v_open, FALSE) THEN
       RETURN jsonb_build_object('error', 'set_not_open');
     END IF;
+    v_available := public.set_available_at(v_set_id, v_at);
 
     IF v_type = 'fruit_check' THEN
       v_count := CASE WHEN (v_form->>'fruit_count') ~ '^\d+$' THEN (v_form->>'fruit_count')::int END;
@@ -130,9 +244,8 @@ BEGIN
         RETURN jsonb_build_object('error', 'invalid_fruit_count');
       END IF;
       -- A recount can only go down: fruit drops, it doesn't appear.
-      IF v_count > GREATEST(v_set.remaining, 0) THEN
-        RETURN jsonb_build_object('error', 'fruit_count_exceeds_remaining',
-                                  'remaining', GREATEST(v_set.remaining, 0));
+      IF v_count > GREATEST(v_available, 0) THEN
+        RETURN jsonb_build_object('error', 'fruit_count_exceeds_remaining', 'remaining', GREATEST(v_available, 0));
       END IF;
     ELSE
       v_total := public.grade_total(v_form->'grade_counts');
@@ -141,7 +254,7 @@ BEGIN
       END IF;
       -- Harvesting more than the bloom log accounts for is allowed (miscounts happen in
       -- the field) but flagged for the manager.
-      IF v_total > v_set.remaining THEN
+      IF v_total > v_available THEN
         v_flags := array_append(v_flags, 'harvest_exceeds_set');
         v_status := 'flagged';
       END IF;
@@ -149,14 +262,14 @@ BEGIN
   END IF;
 
   INSERT INTO public.task_logs (
-    tree_id, task_def_id, task_type, worker_id, set_id,
+    tree_id, task_def_id, task_type, worker_id, set_id, submission_id,
     submitted_at, form_opened_at, qr_scanned_at, qr_value,
     gps_lat, gps_long, gps_delta_meters,
     form_data, photo_required, photo_requirement_reason, photo_audit_selection_seed, photo_url,
     validation_status, validation_flags, notes_text
   ) VALUES (
-    v_tree, p->>'task_def_id', v_type, v_worker, v_set_id,
-    (p->>'submitted_at')::timestamptz, (p->>'form_opened_at')::timestamptz,
+    v_tree, p->>'task_def_id', v_type, v_worker, v_set_id, v_submission,
+    v_at, (p->>'form_opened_at')::timestamptz,
     (p->>'qr_scanned_at')::timestamptz, p->>'qr_value',
     (p->>'gps_lat')::numeric, (p->>'gps_long')::numeric, (p->>'gps_delta_meters')::numeric,
     v_form, COALESCE((p->>'photo_required')::boolean, FALSE),
@@ -168,17 +281,15 @@ BEGIN
 
   IF v_type = 'bloom_log' THEN
     v_days  := public.maturation_days(v_variety);
-    v_bloom := ((p->>'submitted_at')::timestamptz AT TIME ZONE 'Asia/Bangkok')::date;
+    v_bloom := (v_at AT TIME ZONE 'Asia/Bangkok')::date;
     INSERT INTO public.sets (tree_id, color, bloom_log_id, bloom_date, estimated_maturation_days,
                              harvest_window_start, harvest_window_end)
     VALUES (v_tree, v_color, v_log_id, v_bloom, v_days, v_bloom + (v_days - 7), v_bloom + (v_days + 7))
     RETURNING set_id INTO v_set_id;
   END IF;
 
-  IF v_type = 'pest_inspection' AND (v_form->>'severity') IN ('moderate', 'severe') THEN
-    INSERT INTO public.alerts (tier, category, subtype, tree_id, worker_id, triggered_by_log_id)
-    VALUES (CASE WHEN v_form->>'severity' = 'severe' THEN 'tier_1' ELSE 'tier_2' END::alert_tier,
-            'farm_health', 'pest_' || (v_form->>'severity'), v_tree, v_worker, v_log_id);
+  IF v_type = 'pest_inspection' THEN
+    PERFORM public.sync_pest_alert(v_log_id, v_form->>'severity', v_tree, v_worker);
   END IF;
 
   SELECT f INTO v_fraud FROM unnest(v_flags) AS f WHERE f IN ('qr_mismatch', 'gps_off_tree') LIMIT 1;
@@ -187,9 +298,8 @@ BEGIN
     VALUES ('tier_1', 'fraud_signal', v_fraud, v_tree, v_worker, v_log_id);
   END IF;
 
-  IF 'harvest_exceeds_set' = ANY (v_flags) THEN
-    INSERT INTO public.alerts (tier, category, subtype, tree_id, worker_id, triggered_by_log_id)
-    VALUES ('tier_2', 'compliance', 'harvest_exceeds_set', v_tree, v_worker, v_log_id);
+  IF v_type = 'harvest' THEN
+    PERFORM public.sync_over_harvest_alert(v_log_id, 'harvest_exceeds_set' = ANY (v_flags), v_tree, v_worker);
   END IF;
 
   IF v_type IN ('harvest', 'fruit_check') THEN
@@ -205,19 +315,25 @@ BEGIN
 END
 $$;
 
--- Shared guard for correct/void: resolves any row in a chain to its locked root.
+-- Shared guard for correct/void: resolves any row in a chain to its root and locks it.
+-- Lock order is ALWAYS tree → root, the same as submit_task_log, so a correction/void and
+-- a new submission on the same tree serialize: sync_set then always sees the other's
+-- committed rows (otherwise a void and a set-emptying harvest could leave a set closed
+-- with fruit remaining).
 CREATE OR REPLACE FUNCTION public.lock_log_root(p_log_id UUID, p_worker UUID)
 RETURNS JSONB LANGUAGE plpgsql AS $$
 DECLARE
   v_root_id UUID;
+  v_tree    TEXT;
   v_owner   UUID;
 BEGIN
-  SELECT COALESCE(correction_of_log_id, log_id) INTO v_root_id
+  SELECT COALESCE(correction_of_log_id, log_id), tree_id INTO v_root_id, v_tree
   FROM public.task_logs WHERE log_id = p_log_id;
   IF NOT FOUND THEN
     RETURN jsonb_build_object('error', 'not_found');
   END IF;
 
+  PERFORM 1 FROM public.trees WHERE tree_id = v_tree FOR UPDATE;
   SELECT worker_id INTO v_owner FROM public.task_logs WHERE log_id = v_root_id FOR UPDATE;
   IF v_owner <> p_worker THEN
     RETURN jsonb_build_object('error', 'forbidden');
@@ -240,20 +356,33 @@ RETURNS UUID LANGUAGE sql STABLE AS $$
 $$;
 
 -- ---------------------------------------------------------------------------------
--- correct_task_log — append a correction row. Fields that identify a set (the bloom's
--- ribbon colour, a harvest/fruit-check's set) cannot be changed: that would silently
--- move fruit between sets. Void and re-log instead.
+-- correct_task_log — append a correction row, re-applying the same domain rules as a
+-- new submission:
+--   * fruit count: can't exceed what was available when the count was made;
+--   * harvest: the over-harvest flag (and its alert) is recomputed, both ways;
+--   * pest: the pest alert follows the corrected severity.
+-- Fields that identify a set (the bloom's ribbon colour, a harvest/fruit-check's set)
+-- cannot be changed: that would silently move fruit between sets. Void and re-log.
+--
+-- p_flags carries the presence/timing flags of the original visit plus recomputed
+-- value-range flags (from TypeScript); domain flags are owned here. p_status is ignored —
+-- the status follows the final flags.
 -- ---------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.correct_task_log(
   p_log_id UUID, p_worker UUID, p_form JSONB,
   p_status validation_status, p_flags TEXT[], p_reason TEXT
 ) RETURNS JSONB LANGUAGE plpgsql AS $$
 DECLARE
-  v_guard JSONB;
-  v_root  public.task_logs;
-  v_eff   JSONB;
-  v_new   UUID;
-  v_set   UUID;
+  v_guard     JSONB;
+  v_root      public.task_logs;
+  v_eff       JSONB;
+  v_new       UUID;
+  v_set       UUID;
+  v_flags     TEXT[] := array_remove(COALESCE(p_flags, '{}'), 'harvest_exceeds_set');
+  v_available INTEGER;
+  v_count     INTEGER;
+  v_total     INTEGER;
+  v_exceeds   BOOLEAN := FALSE;
 BEGIN
   v_guard := public.lock_log_root(p_log_id, p_worker);
   IF v_guard ? 'error' THEN
@@ -270,6 +399,28 @@ BEGIN
     RETURN jsonb_build_object('error', 'locked_field', 'field', 'set_id');
   END IF;
 
+  v_set := public.set_of_log(v_root.log_id);
+
+  IF v_root.task_type = 'fruit_check' THEN
+    v_count := CASE WHEN (p_form->>'fruit_count') ~ '^\d+$' THEN (p_form->>'fruit_count')::int END;
+    IF v_count IS NULL THEN
+      RETURN jsonb_build_object('error', 'invalid_fruit_count');
+    END IF;
+    v_available := public.set_available_at(v_set, v_root.submitted_at, v_root.log_id);
+    IF v_count > GREATEST(v_available, 0) THEN
+      RETURN jsonb_build_object('error', 'fruit_count_exceeds_remaining', 'remaining', GREATEST(v_available, 0));
+    END IF;
+  ELSIF v_root.task_type = 'harvest' THEN
+    v_total := public.grade_total(p_form->'grade_counts');
+    IF v_total = 0 AND COALESCE(p_form->>'final_pick', 'false') <> 'true' THEN
+      RETURN jsonb_build_object('error', 'empty_harvest');
+    END IF;
+    v_exceeds := v_total > public.set_available_at(v_set, v_root.submitted_at, v_root.log_id);
+    IF v_exceeds THEN
+      v_flags := array_append(v_flags, 'harvest_exceeds_set');
+    END IF;
+  END IF;
+
   INSERT INTO public.task_logs (
     tree_id, task_def_id, task_type, assignment_id, worker_id, set_id,
     submitted_at, form_opened_at, qr_scanned_at, qr_value, gps_lat, gps_long, gps_delta_meters,
@@ -278,14 +429,20 @@ BEGIN
     correction_of_log_id, correction_type, correction_reason
   ) VALUES (
     v_root.tree_id, v_root.task_def_id, v_root.task_type, v_root.assignment_id, p_worker, v_root.set_id,
-    NOW(), NOW(), v_root.qr_scanned_at, v_root.qr_value, v_root.gps_lat, v_root.gps_long, v_root.gps_delta_meters,
+    -- clock_timestamp(), not NOW(): two amendments in one transaction must still order.
+    clock_timestamp(), clock_timestamp(), v_root.qr_scanned_at, v_root.qr_value, v_root.gps_lat, v_root.gps_long, v_root.gps_delta_meters,
     p_form, FALSE, 'none', v_root.photo_url,
-    p_status, COALESCE(p_flags, '{}'),
+    CASE WHEN cardinality(v_flags) > 0 THEN 'flagged' ELSE 'passed' END::validation_status, v_flags,
     v_root.log_id, 'correction', p_reason
   )
   RETURNING log_id INTO v_new;
 
-  v_set := public.set_of_log(v_root.log_id);
+  IF v_root.task_type = 'harvest' THEN
+    PERFORM public.sync_over_harvest_alert(v_root.log_id, v_exceeds, v_root.tree_id, v_root.worker_id);
+  ELSIF v_root.task_type = 'pest_inspection' THEN
+    PERFORM public.sync_pest_alert(v_root.log_id, p_form->>'severity', v_root.tree_id, v_root.worker_id);
+  END IF;
+
   IF v_set IS NOT NULL THEN
     PERFORM public.sync_set(v_set);
   END IF;
@@ -329,7 +486,7 @@ BEGIN
     correction_of_log_id, correction_type, correction_reason
   ) VALUES (
     v_root.tree_id, v_root.task_def_id, v_root.task_type, v_root.assignment_id, p_worker, v_root.set_id,
-    NOW(), NOW(), v_root.qr_scanned_at, v_root.qr_value,
+    clock_timestamp(), clock_timestamp(), v_root.qr_scanned_at, v_root.qr_value,
     '{}'::jsonb, FALSE, 'none',
     'passed', '{}',
     v_root.log_id, 'void', p_reason
@@ -350,6 +507,43 @@ BEGIN
   END IF;
 
   RETURN jsonb_build_object('log_id', v_new, 'root_id', v_root.log_id);
+END
+$$;
+
+-- ---------------------------------------------------------------------------------
+-- manager_set_failed — a manager closes a set by hand as 'failed' (tree died, storm…)
+-- or reopens one they closed. sync_set never overrides 'failed'; reopening hands the
+-- set back to sync_set, which may close it again for a derived reason. Takes the tree
+-- lock like every other set write.
+-- ---------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.manager_set_failed(p_set UUID, p_failed BOOLEAN)
+RETURNS JSONB LANGUAGE plpgsql AS $$
+DECLARE
+  v_set public.sets;
+BEGIN
+  SELECT * INTO v_set FROM public.sets WHERE set_id = p_set;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('error', 'not_found');
+  END IF;
+  PERFORM 1 FROM public.trees WHERE tree_id = v_set.tree_id FOR UPDATE;
+
+  IF p_failed THEN
+    IF v_set.closed_at IS NOT NULL THEN
+      RETURN jsonb_build_object('error', 'set_not_open');
+    END IF;
+    UPDATE public.sets SET closed_at = NOW(), close_reason = 'failed' WHERE set_id = p_set;
+  ELSE
+    IF v_set.close_reason IS DISTINCT FROM 'failed' THEN
+      RETURN jsonb_build_object('error', 'bad_request');
+    END IF;
+    BEGIN
+      UPDATE public.sets SET closed_at = NULL, close_reason = NULL WHERE set_id = p_set;
+    EXCEPTION WHEN unique_violation THEN
+      RETURN jsonb_build_object('error', 'ribbon_in_use', 'color', v_set.color);
+    END;
+    PERFORM public.sync_set(p_set);
+  END IF;
+  RETURN jsonb_build_object('set_id', p_set);
 END
 $$;
 
@@ -469,3 +663,7 @@ REVOKE EXECUTE ON FUNCTION public.void_task_log(UUID, UUID, TEXT) FROM PUBLIC, a
 REVOKE EXECUTE ON FUNCTION public.lock_log_root(UUID, UUID) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.sync_set(UUID) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.dashboard_snapshot(INTEGER) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.set_available_at(UUID, TIMESTAMPTZ, UUID) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.sync_pest_alert(UUID, TEXT, TEXT, UUID) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.sync_over_harvest_alert(UUID, BOOLEAN, TEXT, UUID) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.manager_set_failed(UUID, BOOLEAN) FROM PUBLIC, anon, authenticated;

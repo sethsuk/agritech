@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useSignOut } from "@/lib/client/useSignOut";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { t } from "@/lib/i18n/t";
@@ -29,15 +28,9 @@ type BackProps = {
 type Props = HomeProps | BackProps;
 
 export function WorkerHeader(props: Props) {
-  const router = useRouter();
   const { lang } = useLang();
 
-  async function handleLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
+  const handleLogout = useSignOut();
 
   if (props.variant === "home") {
     return (

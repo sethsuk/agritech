@@ -55,7 +55,7 @@ function Alerts() {
   };
 
   const update = useMutation({
-    mutationFn: (v: { alertId: string; status: AlertStatusTab; notes?: string }) =>
+    mutationFn: (v: { alertId: string; status: AlertRow["status"]; notes?: string }) =>
       api<{ alert: AlertRow }>("/api/manager/alerts", { method: "PATCH", json: v }),
     onMutate: async (v) => {
       await queryClient.cancelQueries({ queryKey: qk.alerts });
@@ -80,7 +80,7 @@ function Alerts() {
   });
 
   function act(alert: AlertRow, status: AlertStatusTab) {
-    const from = tabOf(alert);
+    const from = alert.status; // exact previous status (incl. "reviewed") for Undo
     update.mutate({ alertId: alert.alert_id, status }, {
       onSuccess: () => {
         const msg = status === "open" ? tr("alertReopenedToast")

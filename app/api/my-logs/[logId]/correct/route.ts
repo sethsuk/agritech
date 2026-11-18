@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireWorker } from "@/lib/auth/gate";
 import { checkFields } from "@/lib/validation/fields";
 import { checkBounds, BOUNDS_FLAG_PREFIX } from "@/lib/validation/bounds";
+import { normalizeFormData } from "@/lib/validation/normalize";
 import { CORRECTION_ERROR_STATUS } from "@/lib/logCorrections";
 import type { DbTaskLog, DbTaskDefinition } from "@/types/database";
 
@@ -28,7 +29,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ logId: str
   if (!parsed.success) {
     return NextResponse.json({ error: "reason_required" }, { status: 400 });
   }
-  const { formData, reason } = parsed.data;
+  const { reason } = parsed.data;
 
   const { data: requested } = await admin
     .from("task_logs")
@@ -49,6 +50,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ logId: str
     .eq("task_def_id", root?.task_def_id ?? "")
     .maybeSingle<Pick<DbTaskDefinition, "fields">>();
   if (!root || !taskDef) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  const formData = normalizeFormData(parsed.data.formData, taskDef.fields);
 
   const fields = checkFields(formData, taskDef.fields);
   if (!fields.ok) {
@@ -59,8 +61,8 @@ export async function POST(request: Request, ctx: { params: Promise<{ logId: str
     return NextResponse.json({ error: "submission_rejected", ...bounds.rejection }, { status: 422 });
   }
 
-  // Presence/timing flags describe the original visit and still apply; only the
-  // value-range flags are recomputed from the corrected values.
+  // Presence/timing flags describe the original visit and still apply; value-range flags
+  // are recomputed here; domain flags (over-harvest) are recomputed by the RPC.
   const flags = [
     ...root.validation_flags.filter((f) => !f.startsWith(BOUNDS_FLAG_PREFIX)),
     ...bounds.flags,

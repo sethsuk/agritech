@@ -10,6 +10,7 @@ export default async function ManagerLayout({ children }: { children: ReactNode 
   const me = await getSession();
   if (!me) redirect("/login");
   if (!isStaff(me.role)) redirect("/scan");
+  if (!me.active) redirect("/login?reason=inactive");
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-alt">

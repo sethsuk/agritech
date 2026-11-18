@@ -29,6 +29,11 @@ export interface LogTokenPayload {
    * token so a client can't backdate it at submit to dodge `qr_to_submit_too_fast`.
    */
   qrScannedAt: string;
+  /**
+   * Random id for this opened form. submit_task_log stores it and returns the original
+   * log if the same id arrives again, so a retry after a lost response can't duplicate.
+   */
+  submissionId: string;
   expiresAt: string;    // ISO timestamp
 }
 
@@ -56,7 +61,11 @@ export function signToken(payload: LogTokenPayload): string {
   return `${data}.${sign(data).toString("base64url")}`;
 }
 
-export function verifyToken(token: string): VerifyResult {
+/**
+ * `allowExpired` accepts a correctly-signed but expired token — used only by start-log to
+ * renew a token while keeping its original timings (see app/api/start-log).
+ */
+export function verifyToken(token: string, opts: { allowExpired?: boolean } = {}): VerifyResult {
   const [data, sig] = token.split(".");
   if (!data || !sig) return { ok: false, reason: "invalid" };
 
@@ -73,6 +82,6 @@ export function verifyToken(token: string): VerifyResult {
   } catch {
     return { ok: false, reason: "invalid" };
   }
-  if (new Date(payload.expiresAt) < new Date()) return { ok: false, reason: "expired" };
+  if (!opts.allowExpired && new Date(payload.expiresAt) < new Date()) return { ok: false, reason: "expired" };
   return { ok: true, payload };
 }

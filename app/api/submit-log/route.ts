@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireWorker } from "@/lib/auth/gate";
 import { verifyToken } from "@/lib/logToken";
 import { validate } from "@/lib/validation";
+import { normalizeFormData } from "@/lib/validation/normalize";
 import type { DbTree, DbTaskDefinition } from "@/types/database";
 
 const BodySchema = z.object({
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
-  const { logToken, qrValue, gpsLat, gpsLong, formData, photoUrl, notesText } = parsed.data;
+  const { logToken, qrValue, gpsLat, gpsLong, photoUrl, notesText } = parsed.data;
 
   const verified = verifyToken(logToken);
   if (!verified.ok) {
@@ -76,6 +77,8 @@ export async function POST(request: Request) {
   if (!tree) return NextResponse.json({ error: "tree_not_found" }, { status: 404 });
   if (!taskDef) return NextResponse.json({ error: "task_not_found" }, { status: 404 });
 
+  // Numbers as JSON numbers ("5.0" → 5), so SQL's integer checks agree with validation.
+  const formData = normalizeFormData(parsed.data.formData, taskDef.fields);
   const submittedAt = new Date();
   const validation = validate({
     tree,
@@ -102,6 +105,7 @@ export async function POST(request: Request) {
       task_def_id: token.taskDefId,
       task_type: taskDef.task_type,
       worker_id: userId,
+      submission_id: token.submissionId ?? null,
       submitted_at: submittedAt.toISOString(),
       form_opened_at: token.formOpenedAt,
       qr_scanned_at: token.qrScannedAt,
@@ -137,7 +141,10 @@ export async function POST(request: Request) {
   });
 }
 
+/** Exactly the shape upload-photo produces: <bucket>/<this worker's id>/<timestamp>.<ext>. */
 function isOwnPhotoUrl(url: string, userId: string): boolean {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  return !!base && url.startsWith(`${base}/storage/v1/object/public/task-photos/${userId}/`);
+  if (!base) return false;
+  const prefix = `${base}/storage/v1/object/public/task-photos/${userId}/`;
+  return url.startsWith(prefix) && /^\d+\.(jpg|png|webp)$/.test(url.slice(prefix.length));
 }

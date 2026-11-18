@@ -29,7 +29,8 @@ export async function GET(request: Request) {
   const since = rangeStart(range);
 
   // A fresh builder per use: PostgREST builders are mutable.
-  const filtered = <Q extends { gte: Function; eq: Function }>(q: Q): Q => {
+  type Filterable<Q> = { gte(column: string, value: string): Q; eq(column: string, value: string): Q };
+  const filtered = <Q extends Filterable<Q>>(q: Q): Q => {
     let out = q;
     if (since) out = out.gte("submitted_at", since.toISOString());
     if (zone) out = out.eq("zone", zone.zone).eq("side", zone.side);

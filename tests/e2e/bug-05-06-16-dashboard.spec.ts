@@ -25,12 +25,12 @@ test("bug 5 — switching time range and zone makes no further API requests", as
 
 test("bug 6 — tapping ⓘ explains 'trees not checked' and 'sets past harvest window'", async ({ page }) => {
   await page.getByRole("button", { name: new RegExp(`${th("moreInfo")}: ต้นที่ไม่ได้ตรวจ`) }).click();
-  await expect(page.getByRole("tooltip")).toContainText("ไม่มีใครบันทึกงาน");
+  await expect(page.locator("[data-infotip-panel]")).toContainText("ไม่มีใครบันทึกงาน");
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("tooltip")).toHaveCount(0);
+  await expect(page.locator("[data-infotip-panel]")).toHaveCount(0);
 
   await page.getByRole("button", { name: `${th("moreInfo")}: ${th("statOverdueSets")}` }).click();
-  await expect(page.getByRole("tooltip")).toContainText("ช่วงเก็บเกี่ยว");
+  await expect(page.locator("[data-infotip-panel]")).toContainText("ช่วงเก็บเกี่ยว");
 });
 
 test("bug 16 — the Logs and Fruit tiles open the Logs page on the same slice", async ({ page }) => {

@@ -5,6 +5,7 @@ import { resolve } from "path";
 import ws from "ws";
 import { dict, type DictKey } from "../../lib/i18n/dictionary";
 import { fmt } from "../../lib/i18n/labels";
+import { toAuthPassword } from "../../lib/auth/pin";
 
 (globalThis as { WebSocket?: unknown }).WebSocket ??= ws;
 config({ path: resolve(process.cwd(), ".env.local"), quiet: true });
@@ -108,4 +109,30 @@ export async function setNumber(page: Page, label: string, n: number) {
   const input = card.getByRole("spinbutton");
   await input.fill(String(n));
   await input.blur();
+}
+
+/** A throwaway worker account (e2e_ prefix → deleted by global-teardown). */
+export async function createE2EWorker(pin = "4321"): Promise<{ username: string; id: string; pin: string }> {
+  const username = `e2e_w${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  const { data, error } = await admin.auth.admin.createUser({
+    email: `${username}@farm.local`, password: toAuthPassword(pin), email_confirm: true,
+  });
+  if (error || !data.user) throw new Error(`createUser: ${error?.message}`);
+  await admin.from("users").insert({ id: data.user.id, role: "worker", display_name: `E2E ${username}` });
+  await admin.from("workers").insert({ worker_id: data.user.id, language: "th", assigned_zones: ["A", "Z"], trust_tier: "audit" });
+  return { username, id: data.user.id, pin };
+}
+
+/** Submit a log through the service-role RPC (arrange state without driving the UI). */
+export async function rpcSubmit(treeId: string, workerId: string, taskType: string, taskDefId: string, form: object, secs = 0) {
+  const at = new Date(Date.now() + secs * 1000).toISOString();
+  const { data, error } = await admin.rpc("submit_task_log", {
+    p: {
+      tree_id: treeId, task_def_id: taskDefId, task_type: taskType, worker_id: workerId,
+      submitted_at: at, form_opened_at: at, qr_scanned_at: at, qr_value: `QR_${treeId}_v1`,
+      validation_status: "passed", validation_flags: [], form_data: form,
+    },
+  });
+  if (error) throw new Error(error.message);
+  return data as { log_id: string; set_id: string };
 }

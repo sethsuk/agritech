@@ -72,6 +72,11 @@ export interface TaskField {
   options?: TaskFieldOption[];
   /** Optional helper text shown under the field. */
   hint?: I18nString;
+  /**
+   * A required field stops being required while this (toggle) field is true — e.g. the
+   * harvest's grade counts aren't needed for a "last pick" that found no fruit.
+   */
+  required_unless?: string;
 }
 
 // DB row shapes
@@ -333,6 +338,7 @@ export interface Database {
       };
       void_task_log: { Args: { p_log_id: string; p_worker: string; p_reason: string }; Returns: RpcResult };
       dashboard_snapshot: { Args: { p_stale_days: number }; Returns: unknown };
+      manager_set_failed: { Args: { p_set: string; p_failed: boolean }; Returns: RpcResult };
     };
   };
 }

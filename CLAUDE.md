@@ -17,7 +17,9 @@ npm run dev             # http://localhost:3000
 npm run dev:test        # dev server with SKIP_VALIDATION=true (bypasses GPS/QR/timing checks)
 npm run dev:https       # self-signed HTTPS — needed to test camera/QR scan on a phone
 npm run build
-npm run lint
+npm run lint            # ESLint 9 flat config (eslint.config.mjs) — `next lint` is deprecated
+npm run test:unit       # Vitest: lib/time, validation (incl. presence/timing), labels, PINs
+npm run test:sql        # RPC/view tests in rolled-back transactions + a two-connection race test
 
 npm run db:migrate      # runs supabase/migrations/*.sql in order via scripts/migrate.ts, then seeds task_definitions
 npm run db:seed:trees   # inserts 1035 trees in zone A (AL1-1…AL23-23, AR1-1…AR22-23)
@@ -41,6 +43,12 @@ functions and types, then re-runs migrate + both seeds). Views and functions (`0
 idempotent and handles the fact that `auth.users` survives a public-schema wipe: it looks up the
 existing auth user by email and re-upserts its profile rows *and password*.
 
+**SQL tests** (`tests/sql/NN_*.sql`) run after `tests/sql/_prelude.sql` inside `BEGIN … ROLLBACK`
+against the dev DB and assert with plpgsql `ASSERT`; the prelude gives a throwaway tree and
+`pg_temp.submit/correct/void` helpers with explicit time offsets (`now()` is frozen inside a
+transaction). Domain rules belong here — far cheaper than e2e. `scripts/test-sql.ts` also runs a
+concurrency test that needs real commits (it cleans up its own zone-Z tree).
+
 **E2E tests** (`tests/e2e/`) run against the dev Supabase project in `.env.local` — not an isolated
 DB — with `workers: 1`. The `bug-*.spec.ts` files run on phone emulation; the rest on desktop.
 Specs create their own trees in the e2e-only zone `Z` (`helpers.freshTree()`) and accounts with an
@@ -62,6 +70,11 @@ characters, so a 4–6 digit PIN is stored as `pin-<PIN>` (`lib/auth/pin.ts` `to
 Every path that sets or checks a password — account creation, PIN reset, login, `seed-users.ts` —
 must go through it. Passwords are only ever stored hashed inside Supabase Auth; a forgotten PIN can
 only be reset (manager → worker page → Reset PIN).
+
+**Accepted risks (owner's decision — internal, non-commercial app):** 4-digit PINs can be
+brute-forced against predictable usernames, limited only by Supabase's per-IP rate limit (no
+lockout/CAPTCHA). The deterministic photo-audit draw (`lib/photoAudit.ts`) can be probed via
+`start-log` to learn which trees need a photo today — the price of it not being re-rollable.
 
 ## Architecture
 
@@ -159,6 +172,15 @@ This is the core domain flow and spans several files:
    flags and over-harvests → `alerts` rows; then `sync_set()`. There are no fire-and-forget side
    effects (they used to be, and could be lost when Vercel froze the function after responding).
    RPCs never raise for domain errors — they return `{ error: "<code>", ...details }`.
+   - **Idempotent:** the token carries a random `submissionId`, stored in
+     `task_logs.submission_id` (unique). A retry after a lost response returns the original log
+     (`duplicate: true`) instead of inserting a second one.
+   - **Token renewal:** `start-log` accepts `previousToken` (an expired or draft-restored token for
+     the same worker/tree/task, ≤ 12 h old) and keeps its form-open/QR-scan times, photo decision
+     and submission id — so a timed-out or restored form isn't flagged "too fast" and can't be
+     duplicated. The task-page draft stores the token for this.
+   - **Lock order:** every set-touching RPC (`submit`, `correct`, `void`, `manager_set_failed`)
+     locks the **tree row first**, so writes to one tree serialize and `sync_set` sees them all.
 5. `SKIP_VALIDATION=true` (env var, also toggled by `npm run dev:test`) skips the photo-audit roll
    and the **presence and timing** checks — the ones a laptop can't satisfy. Field and bounds
    checks, and the RPC's domain rules, always run. Never set in production.
@@ -228,11 +250,16 @@ ribbon colour per tree (partial unique index), so a harvest always maps to exact
   (`maturation_days()`) ± 7.
 - **Fruit count** (`fruit_count_v1`, repeatable) records fruit still on the tree; it can only go
   down. `remaining` = latest count (or bloom flowers) − harvested since that count.
+  `set_available_at(set, at, exclude)` is the ONE definition of "available", used by submit
+  (fruit-count ceiling, over-harvest flag) and by corrections, which re-apply the same rules as
+  they were at the record's time (and re-sync the over-harvest and pest alerts both ways).
 - **Harvest** (`harvest_log_v1`) picks an open set (`set_picker`). More than `remaining` is saved
   but flagged `harvest_exceeds_set` with a tier-2 alert. The set closes when `remaining` ≤ 0 or
   the worker ticks "last pick" (`final_pick`); leftovers count as `lost`.
 - `sync_set()` is the only writer of `closed_at`/`close_reason` (except a manager's manual
-  `failed`), and it reopens a set if a correction/void brings `remaining` back above 0.
+  `failed` via `manager_set_failed`, from the set card on the tree page), and it reopens a set if
+  a correction/void brings `remaining` back above 0. A last pick may have no fruit
+  (`grade_counts.required_unless = "final_pick"`; see `isRequired` in `lib/validation/fields.ts`).
 
 ### Time — always Bangkok
 
@@ -251,7 +278,9 @@ filter/tab switches are instant. The manager overview is a single RPC (`dashboar
 pre-grouped by every zone × range, so switching zone/range on the dashboard makes no request. After
 a write, invalidate every query whose numbers it changes (e.g. resolving an alert →
 `qk.alerts`, `qk.overview`, `qk.trees`). Fetch with `lib/client/api.ts` `api()`, which throws an
-`ApiError` carrying the response's error code.
+`ApiError` carrying the response's error code. Sign out with `useSignOut()`
+(`lib/client/useSignOut.ts`), which also clears the query cache and form drafts — farm phones
+are shared.
 
 ### Errors — codes, not prose
 

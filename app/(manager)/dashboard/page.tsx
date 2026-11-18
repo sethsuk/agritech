@@ -45,7 +45,8 @@ function Dashboard() {
 
   const setFilter = (next: { zone?: string | null; range?: RangeKey }) => {
     const qs = new URLSearchParams(params);
-    if (next.zone !== undefined) next.zone ? qs.set("zone", next.zone) : qs.delete("zone");
+    if (next.zone) qs.set("zone", next.zone);
+    else if (next.zone === null) qs.delete("zone");
     if (next.range) qs.set("range", next.range);
     router.replace(`/dashboard?${qs}`, { scroll: false });
   };
@@ -228,7 +229,8 @@ function select(o: Overview, zone: string | null, range: RangeKey) {
     .sort((a, b) => GRADE_ORDER.indexOf(a[0]) - GRADE_ORDER.indexOf(b[0]));
 
   const alerts = o.alerts.filter((a) => !z || inZone(a));
-  const since = range === "all" ? null : o.bounds[range];
+  // Compare as instants, not strings: Postgres and JS serialise timestamps differently.
+  const since = range === "all" ? null : Date.parse(o.bounds[range]);
 
   return {
     logs,
@@ -242,7 +244,7 @@ function select(o: Overview, zone: string | null, range: RangeKey) {
     overdueSets: o.overdueSets.filter(inZone),
     recentLogs: o.recentLogs
       .filter(inZone)
-      .filter((l) => !since || l.submitted_at >= since)
+      .filter((l) => since === null || Date.parse(l.submitted_at) >= since)
       .slice(0, 20),
   };
 }

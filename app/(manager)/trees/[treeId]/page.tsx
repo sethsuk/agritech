@@ -135,7 +135,7 @@ export default function ManagerTreeDetailPage() {
           <p className="text-sm text-muted">{tr("noSetsYet")}</p>
         ) : (
           <ul className="space-y-3">
-            {[...openSets, ...closedSets].map((s) => <SetCard key={s.set_id} set={s} />)}
+            {[...openSets, ...closedSets].map((s) => <SetCard key={s.set_id} set={s} treeId={tree.tree_id} />)}
           </ul>
         )}
       </div>
@@ -221,8 +221,21 @@ export default function ManagerTreeDetailPage() {
   );
 }
 
-function SetCard({ set }: { set: SetState }) {
+function SetCard({ set, treeId }: { set: SetState; treeId: string }) {
   const { lang, tr } = useT();
+  const queryClient = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
+  const toggle = useMutation({
+    mutationFn: (failed: boolean) => api(`/api/manager/sets/${set.set_id}`, { method: "PATCH", json: { failed } }),
+    onSuccess: (_d, failed) => {
+      toast.success(tr(failed ? "setClosedFailedToast" : "setReopenedToast"));
+      queryClient.invalidateQueries({ queryKey: qk.tree(treeId) });
+      queryClient.invalidateQueries({ queryKey: qk.overview });
+      queryClient.invalidateQueries({ queryKey: qk.trees });
+    },
+    onError: (err) => toast.error(errorMessage(errorBody(err), lang)),
+  });
+
   return (
     <li className={`rounded-lg border border-line p-3 ${set.closed_at ? "bg-surface-alt/60" : "bg-surface-alt"}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -231,7 +244,7 @@ function SetCard({ set }: { set: SetState }) {
           <span className="ml-2 text-xs font-normal text-muted">{tr("setBloomedOn", { date: formatDate(set.bloom_date, lang) })}</span>
         </p>
         <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-xs font-semibold text-body">
-          {tr(`stage_${set.stage}` as Parameters<typeof tr>[0])}
+          {set.close_reason === "failed" ? tr("closeReason_failed") : tr(`stage_${set.stage}` as Parameters<typeof tr>[0])}
         </span>
       </div>
       <dl className="mt-2 grid grid-cols-4 gap-2 text-center text-xs">
@@ -243,6 +256,27 @@ function SetCard({ set }: { set: SetState }) {
       <p className="mt-2 text-xs text-muted">
         {tr("setHarvestWindow", { start: formatDate(set.harvest_window_start, lang), end: formatDate(set.harvest_window_end, lang) })}
       </p>
+      {(set.closed_at === null || set.close_reason === "failed") && (
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            disabled={toggle.isPending}
+            onClick={() => (set.closed_at === null ? setConfirming(true) : toggle.mutate(false))}
+            className="inline-flex min-h-11 items-center rounded-lg border border-line bg-surface px-3 text-xs font-semibold text-body disabled:opacity-50"
+          >
+            {set.closed_at === null ? tr("closeSetFailed") : `↺ ${tr("reopenSet")}`}
+          </button>
+        </div>
+      )}
+      <ConfirmDialog
+        open={confirming}
+        title={tr("closeSetFailed")}
+        message={tr("closeSetFailedMsg", { color: colorName(set.color, lang) })}
+        confirmLabel={tr("closeSetFailed")}
+        destructive
+        onConfirm={() => { setConfirming(false); toggle.mutate(true); }}
+        onCancel={() => setConfirming(false)}
+      />
     </li>
   );
 }

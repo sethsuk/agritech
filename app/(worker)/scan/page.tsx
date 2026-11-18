@@ -48,7 +48,10 @@ export default function ScanPage() {
         setScanned(true);
         rememberTree(tree.tree_id);
         sessionStorage.setItem("qr_scanned_at", scannedAt);
-        sessionStorage.setItem("qr_value", qrValue);
+        // A real QR payload is stored as scanned; anything else matched by tree ID was typed,
+        // so store the canonical ID ("al1-1" → "AL1-1") — presence.ts then flags it as a
+        // manual entry instead of a tier-1 QR mismatch.
+        sessionStorage.setItem("qr_value", qrValue === tree.qr_code ? qrValue : tree.tree_id);
         router.push(`/tree/${tree.tree_id}`);
       } catch {
         toast.error(tr("err_network"));

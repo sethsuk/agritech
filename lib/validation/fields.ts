@@ -21,13 +21,19 @@ export function isMissing(field: TaskField, raw: unknown): boolean {
 
 const OPTION_FIELD_TYPES = ["dropdown", "color_picker", "severity_picker"];
 
+/** Whether `field` must be filled in, given the rest of the form (see `required_unless`). */
+export function isRequired(field: TaskField, formData: Record<string, unknown>): boolean {
+  if (!field.required) return false;
+  return !(field.required_unless && formData[field.required_unless] === true);
+}
+
 /** The first required field the worker hasn't filled in, or null if the form is complete. */
 export function firstMissingRequiredField(
   formData: Record<string, unknown>,
   fields: TaskField[],
 ): TaskField | null {
   for (const field of fields) {
-    if (field.required && isMissing(field, formData[field.field_id])) return field;
+    if (isRequired(field, formData) && isMissing(field, formData[field.field_id])) return field;
   }
   return null;
 }
@@ -47,7 +53,7 @@ export function checkFields(formData: Record<string, unknown>, fields: TaskField
       ({ ok: false, rejection: { code, field: field.field_id, option } });
 
     if (isMissing(field, raw)) {
-      if (field.required) return fail("field_required");
+      if (isRequired(field, formData)) return fail("field_required");
       continue;
     }
 

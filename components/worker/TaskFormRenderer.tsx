@@ -4,6 +4,7 @@ import { t } from "@/lib/i18n/t";
 import { useT } from "@/lib/i18n/LanguageContext";
 import type { SetState, TaskField } from "@/types/database";
 import { RequiredMark } from "@/components/FormField";
+import { isRequired } from "@/lib/validation/fields";
 import { NumericCounter } from "./NumericCounter";
 import { ColorPicker } from "./ColorPicker";
 import { SeverityPicker } from "./SeverityPicker";
@@ -63,7 +64,7 @@ export function TaskFormRenderer({ fields, formData, onChange, openSets = [], er
           );
         } else if (field.type === "color_picker") {
           control = (
-            <ColorPicker
+            <ColorPicker labelledBy={labelId}
               options={field.options ?? []}
               value={typeof raw === "string" ? raw : null}
               onChange={(v) => onChange(field.field_id, v)}
@@ -74,11 +75,11 @@ export function TaskFormRenderer({ fields, formData, onChange, openSets = [], er
           );
         } else if (field.type === "severity_picker") {
           control = (
-            <SeverityPicker options={field.options ?? []} value={typeof raw === "string" ? raw : null} onChange={(v) => onChange(field.field_id, v)} />
+            <SeverityPicker labelledBy={labelId} options={field.options ?? []} value={typeof raw === "string" ? raw : null} onChange={(v) => onChange(field.field_id, v)} />
           );
         } else if (field.type === "dropdown") {
           control = (
-            <IconDropdown options={field.options ?? []} value={typeof raw === "string" ? raw : null} onChange={(v) => onChange(field.field_id, v)} />
+            <IconDropdown labelledBy={labelId} options={field.options ?? []} value={typeof raw === "string" ? raw : null} onChange={(v) => onChange(field.field_id, v)} />
           );
         } else if (field.type === "grade_counter") {
           control = (
@@ -92,9 +93,9 @@ export function TaskFormRenderer({ fields, formData, onChange, openSets = [], er
             />
           );
         } else if (field.type === "set_picker") {
-          control = <SetPicker sets={openSets} value={typeof raw === "string" ? raw : null} onChange={(v) => onChange(field.field_id, v)} />;
+          control = <SetPicker labelledBy={labelId} sets={openSets} value={typeof raw === "string" ? raw : null} onChange={(v) => onChange(field.field_id, v)} />;
         } else if (field.type === "toggle") {
-          control = <Toggle value={raw === true} onChange={(v) => onChange(field.field_id, v)} />;
+          control = <Toggle labelledBy={labelId} value={raw === true} onChange={(v) => onChange(field.field_id, v)} />;
         }
         if (!control) return null;
 
@@ -104,18 +105,18 @@ export function TaskFormRenderer({ fields, formData, onChange, openSets = [], er
             id={fieldDomId(field.field_id)}
             role="group"
             aria-labelledby={labelId}
-            aria-invalid={hasError || undefined}
+            aria-describedby={hasError && errorMessage ? `${fieldDomId(field.field_id)}-error` : undefined}
             className={`scroll-mt-24 rounded-lg bg-surface p-4 ${hasError ? "border-2 border-warning" : "border border-line"}`}
           >
             <p id={labelId} className="mb-3 flex items-center gap-2 text-lg font-semibold text-body">
               <span aria-hidden>{field.label_icon}</span>
               <span>{t(field.label, lang)}</span>
-              {field.required && <RequiredMark />}
+              {isRequired(field, formData) && <RequiredMark />}
             </p>
             {control}
             {field.hint && <p className="mt-2 text-sm text-muted">{t(field.hint, lang)}</p>}
             {hasError && errorMessage && (
-              <p role="alert" className="mt-2 text-base font-semibold text-warning-ink">{errorMessage}</p>
+              <p id={`${fieldDomId(field.field_id)}-error`} role="alert" className="mt-2 text-base font-semibold text-warning-ink">{errorMessage}</p>
             )}
           </div>
         );

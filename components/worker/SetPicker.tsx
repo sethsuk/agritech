@@ -4,6 +4,7 @@ import { useT } from "@/lib/i18n/LanguageContext";
 import { colorName } from "@/lib/i18n/labels";
 import { formatDate } from "@/lib/time";
 import type { SetState } from "@/types/database";
+import { useRadioGroup } from "@/lib/client/useRadioGroup";
 
 const swatch: Record<string, string> = {
   red: "bg-ribbon-red",
@@ -19,24 +20,24 @@ const swatch: Record<string, string> = {
  * what keeps every harvest a subset of a logged bloom.
  */
 export function SetPicker({
-  sets, value, onChange,
-}: { sets: SetState[]; value: string | null; onChange: (setId: string) => void }) {
+  sets, value, onChange, labelledBy,
+}: { sets: SetState[]; value: string | null; onChange: (setId: string) => void; labelledBy?: string }) {
   const { lang, tr } = useT();
+  const radio = useRadioGroup(sets.map((s) => s.set_id), value, onChange);
 
   if (sets.length === 0) {
     return <p className="rounded-lg bg-caution-tint p-3 text-base font-semibold text-caution-ink">{tr("setPickerEmpty")}</p>;
   }
 
   return (
-    <div className="space-y-2" role="radiogroup">
-      {sets.map((s) => {
+    <div className="space-y-2" role="radiogroup" aria-labelledby={labelledBy}>
+      {sets.map((s, i) => {
         const selected = value === s.set_id;
         return (
           <button
             key={s.set_id}
             type="button"
-            role="radio"
-            aria-checked={selected}
+            {...radio(i)}
             onClick={() => onChange(s.set_id)}
             className={`flex min-h-15 w-full items-center gap-3 rounded-lg border-2 px-4 py-3 text-left ${
               selected ? "border-primary bg-primary-tint" : "border-line bg-surface-alt"

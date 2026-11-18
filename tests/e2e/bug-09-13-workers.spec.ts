@@ -28,5 +28,5 @@ test("bug 13 — worker metrics use plain names with explanations", async ({ pag
 
   await page.getByRole("link", { name: /U Aung/ }).click();
   await page.getByRole("button", { name: new RegExp(th("moreInfo")) }).filter({ visible: true }).first().click();
-  await expect(page.getByRole("tooltip")).toContainText("ระบบตั้งข้อสังเกต");
+  await expect(page.locator("[data-infotip-panel]")).toContainText("ระบบตั้งข้อสังเกต");
 });

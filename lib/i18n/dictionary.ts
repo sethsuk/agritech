@@ -428,6 +428,12 @@ export const dict = {
   savedBannerTitle: { th: "บันทึกแล้ว ✓", my: "သိမ်းပြီးပါပြီ ✓", en: "Saved ✓" },
   scanNextTree: { th: "📷 สแกนต้นถัดไป", my: "📷 နောက်ပင်ကို စကင်ဖတ်ရန်", en: "📷 Scan the next tree" },
   orAnotherTaskHere: { th: "หรือเลือกงานอื่นของต้นนี้ด้านล่าง", my: "သို့မဟုတ် ဤပင်အတွက် အခြားအလုပ်ကို အောက်တွင် ရွေးပါ", en: "Or pick another task for this tree below" },
+  closeSetFailed: { th: "ปิดชุดนี้ (เสียหาย)", my: "ဤအစုကို ပိတ်ရန် (ပျက်စီး)", en: "Close set (failed)" },
+  reopenSet: { th: "เปิดชุดอีกครั้ง", my: "အစုကို ပြန်ဖွင့်ရန်", en: "Reopen set" },
+  closeSetFailedMsg: { th: "ปิดชุดสี{color}เป็น “เสียหาย”? ใช้เมื่อผลทั้งหมดเสีย เช่น ต้นตายหรือพายุ คนงานจะบันทึกเก็บเกี่ยวชุดนี้ไม่ได้", my: "{color} အစုကို “ပျက်စီး” အဖြစ် ပိတ်မလား? ပင်သေခြင်း၊ မုန်တိုင်း စသည်ဖြင့် အသီးအားလုံး ဆုံးရှုံးသည့်အခါ သုံးပါ", en: "Close the {color} set as failed? Use this when the fruit is lost (tree died, storm…). Workers can no longer log harvests on it." },
+  setClosedFailedToast: { th: "ปิดชุดแล้ว", my: "အစုကို ပိတ်ပြီး", en: "Set closed" },
+  setReopenedToast: { th: "เปิดชุดอีกครั้งแล้ว", my: "အစုကို ပြန်ဖွင့်ပြီး", en: "Set reopened" },
+  closeReason_failed: { th: "ปิดโดยผู้จัดการ (เสียหาย)", my: "မန်နေဂျာ ပိတ်ထားသည် (ပျက်စီး)", en: "Closed by manager (failed)" },
 } as const satisfies Record<string, I18nString>;
 
 export type DictKey = keyof typeof dict;

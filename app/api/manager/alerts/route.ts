@@ -31,7 +31,8 @@ export async function GET() {
 
 const PatchSchema = z.object({
   alertId: z.string().uuid(),
-  status: z.enum(["open", "resolved", "dismissed"]),
+  // "reviewed" is accepted so Undo can restore an alert to exactly its previous status.
+  status: z.enum(["open", "reviewed", "resolved", "dismissed"]),
   notes: z.string().trim().max(500).optional(),
 });
 
@@ -46,7 +47,7 @@ export async function PATCH(request: Request) {
   const { alertId, status, notes } = parsed.data;
 
   // Reopening clears the resolution so the alert reads as genuinely open again.
-  const update = status === "open"
+  const update = status === "open" || status === "reviewed"
     ? {
         status,
         resolution_action_taken: null,

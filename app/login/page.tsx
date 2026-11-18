@@ -2,7 +2,9 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { clearDrafts } from "@/lib/client/useSignOut";
 import { useLang, useT } from "@/lib/i18n/LanguageContext";
 import { hasStoredLang } from "@/lib/i18n/LanguageContext";
 import { toAuthPassword } from "@/lib/auth/pin";
@@ -29,6 +31,7 @@ function Login() {
   const params = useSearchParams();
   const { tr } = useT();
   const { setLang } = useLang();
+  const queryClient = useQueryClient();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -66,6 +69,9 @@ function Login() {
       if (worker?.language) setLang(worker.language as Lang);
     }
 
+    // Nothing cached from whoever used this phone before may leak into this session.
+    queryClient.clear();
+    clearDrafts();
     router.push("/");
     router.refresh();
   }

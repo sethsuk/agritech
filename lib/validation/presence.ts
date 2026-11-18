@@ -29,7 +29,7 @@ export function checkPresence(params: {
   // A worker who typed the tree ID (camera broken, label unreadable) submits the bare ID
   // instead of the QR payload. That's reviewable but not fraud — distinct flag, no
   // tier-1 fraud alert. A *different* QR value is still a mismatch.
-  if (params.qrValue === params.tree.tree_id) {
+  if (params.qrValue.trim().toUpperCase() === params.tree.tree_id) {
     flags.push("manual_entry");
   } else if (params.qrValue !== params.tree.qr_code) {
     flags.push("qr_mismatch");

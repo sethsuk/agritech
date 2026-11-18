@@ -4,6 +4,7 @@ import type { TaskFieldOption } from "@/types/database";
 import { t } from "@/lib/i18n/t";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { SelectedCheck } from "./SelectedCheck";
+import { useRadioGroup } from "@/lib/client/useRadioGroup";
 
 type Props = {
   options: TaskFieldOption[];
@@ -12,6 +13,8 @@ type Props = {
   /** Options that can't be picked right now (e.g. a ribbon colour already on an open set). */
   disabledValues?: string[];
   disabledNote?: string;
+  /** id of the visible label naming this group. */
+  labelledBy?: string;
 };
 
 // Ribbon colors are domain data (the physical ribbon on the tree), not UI
@@ -31,20 +34,20 @@ const colorBg: Record<string, string> = {
   white: "bg-ribbon-white",
 };
 
-export function ColorPicker({ options, value, onChange, disabledValues = [], disabledNote }: Props) {
+export function ColorPicker({ options, value, onChange, disabledValues = [], disabledNote, labelledBy }: Props) {
   const { lang } = useLang();
+  const radio = useRadioGroup(options.map((o) => o.value), value, onChange, disabledValues);
   return (
     // Grid, not a single flex row: four swatches overflowed 320–360px phones.
-    <div className="grid grid-cols-2 gap-3 min-[400px]:grid-cols-4" role="radiogroup">
-      {options.map((opt) => {
+    <div className="grid grid-cols-2 gap-3 min-[400px]:grid-cols-4" role="radiogroup" aria-labelledby={labelledBy}>
+      {options.map((opt, i) => {
         const selected = value === opt.value;
         const disabled = disabledValues.includes(opt.value);
         return (
           <button
             key={opt.value}
             type="button"
-            role="radio"
-            aria-checked={selected}
+            {...radio(i)}
             disabled={disabled}
             onClick={() => onChange(opt.value)}
             className={`relative flex min-h-15 flex-col items-center gap-1.5 rounded-lg p-3 transition disabled:opacity-40 ${

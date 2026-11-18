@@ -27,7 +27,12 @@ interface StartLogResponse {
 
 /** Unsaved entries survive Back, reload, or the phone killing the tab (per tree + task). */
 const draftKey = (treeId: string, taskDefId: string) => `draft:${treeId}:${taskDefId}`;
-type Draft = { formData: Record<string, unknown>; photoUrl: string | null };
+/**
+ * The draft also keeps the form's token: reopening hands it back to start-log, which renews
+ * it with the ORIGINAL form-open time and submission id — so restored entries don't look
+ * "filled in too fast", and a submission that already went through can't be duplicated.
+ */
+type Draft = { formData: Record<string, unknown>; photoUrl: string | null; logToken?: string };
 
 function readDraft(key: string): Draft | null {
   try {
@@ -73,10 +78,10 @@ export default function TaskFormPage() {
   useEffect(() => {
     try {
       if (submittedRef.current) return;
-      if (dirty) sessionStorage.setItem(key, JSON.stringify({ formData, photoUrl } satisfies Draft));
+      if (dirty) sessionStorage.setItem(key, JSON.stringify({ formData, photoUrl, logToken: startLog?.logToken } satisfies Draft));
       else sessionStorage.removeItem(key);
     } catch { /* storage blocked — drafts are a convenience */ }
-  }, [key, formData, photoUrl, dirty]);
+  }, [key, formData, photoUrl, dirty, startLog]);
 
   const clearDraft = () => { try { sessionStorage.removeItem(key); } catch { /* ignore */ } };
 
@@ -95,16 +100,20 @@ export default function TaskFormPage() {
 
   // --- Signed token + photo decision. Re-callable: an expired token is replaced
   // without losing what the worker has entered. ---
-  const openForm = useCallback(async () => {
+  const openForm = useCallback(async (previousToken?: string) => {
     setStartError(null);
     try {
       const qrScannedAt = sessionStorage.getItem("qr_scanned_at") ?? new Date().toISOString();
-      setStartLog(await api<StartLogResponse>("/api/start-log", { method: "POST", json: { treeId, taskDefId, qrScannedAt } }));
+      setStartLog(await api<StartLogResponse>("/api/start-log", {
+        method: "POST",
+        json: { treeId, taskDefId, qrScannedAt, previousToken },
+      }));
     } catch (err) {
       setStartError(err);
     }
   }, [treeId, taskDefId]);
-  useEffect(() => { openForm(); }, [openForm]);
+  // On open, renew a restored draft's token rather than starting a new form.
+  useEffect(() => { openForm(readDraft(key)?.logToken); }, [openForm, key]);
 
   // --- Unsaved-input protection for reload / closing the tab. ---
   useEffect(() => {
@@ -170,7 +179,7 @@ export default function TaskFormPage() {
       if (body.error === "submission_rejected" && typeof body.field === "string") {
         showFieldError(body.field, rejectionMessage(body as never, taskDef.fields, lang));
       } else if (body.error === "token_expired") {
-        await openForm(); // fresh token; entries are kept
+        await openForm(startLog.logToken); // renewed token, same timings; entries are kept
         toast.error(tr("err_token_expired"), { duration: 8000 });
       } else if (["ribbon_in_use", "set_not_open", "fruit_count_exceeds_remaining", "empty_harvest"].includes(body.error)) {
         const field = body.error === "ribbon_in_use" ? "color"
@@ -194,7 +203,7 @@ export default function TaskFormPage() {
       <div className="flex min-h-dvh flex-col">
         <WorkerHeader variant="back" title={tr("formLoadError")} onBack={() => goToTree()} hideLogout />
         <main className="mx-auto w-full max-w-md px-4 py-6">
-          <ErrorState error={loadError} onRetry={() => { treeQuery.refetch(); defsQuery.refetch(); openForm(); }} />
+          <ErrorState error={loadError} onRetry={() => { treeQuery.refetch(); defsQuery.refetch(); openForm(startLog?.logToken); }} />
         </main>
       </div>
     );

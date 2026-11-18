@@ -4,11 +4,13 @@ import type { TaskFieldOption } from "@/types/database";
 import { t } from "@/lib/i18n/t";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { SelectedCheck } from "./SelectedCheck";
+import { useRadioGroup } from "@/lib/client/useRadioGroup";
 
 type Props = {
   options: TaskFieldOption[];
   value: string | null;
   onChange: (v: string) => void;
+  labelledBy?: string;
 };
 
 // Severity escalates through the semantic palette: safe → caution → warning tint
@@ -21,16 +23,16 @@ const severityColor: Record<string, string> = {
   severe: "bg-warning ring-warning-press text-white",
 };
 
-export function SeverityPicker({ options, value, onChange }: Props) {
+export function SeverityPicker({ options, value, onChange, labelledBy }: Props) {
   const { lang } = useLang();
+  const radio = useRadioGroup(options.map((o) => o.value), value, onChange);
   return (
-    <div className="grid grid-cols-2 gap-3" role="radiogroup">
-      {options.map((opt) => (
+    <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-labelledby={labelledBy}>
+      {options.map((opt, i) => (
         <button
           key={opt.value}
           type="button"
-          role="radio"
-          aria-checked={value === opt.value}
+          {...radio(i)}
           onClick={() => onChange(opt.value)}
           className={`relative flex min-h-15 flex-col items-center gap-2 rounded-lg p-4 transition ${
             value === opt.value

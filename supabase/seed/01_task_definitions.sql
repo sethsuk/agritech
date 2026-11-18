@@ -117,7 +117,7 @@ VALUES
     "required":true},
    {"field_id":"grade_counts","type":"grade_counter","label_icon":"🥭",
     "label":{"th":"จำนวนผลตามเกรด","my":"အဆင့်အလိုက် အသီးအရေအတွက်","en":"Fruit count by grade"},
-    "required":true,"min":0,"max":200,"step":1,
+    "required":true,"required_unless":"final_pick","min":0,"max":200,"step":1,
     "options":[
       {"value":"A","icon":"🥇","label":{"th":"A","my":"A","en":"A"}},
       {"value":"B","icon":"🥈","label":{"th":"B","my":"B","en":"B"}},

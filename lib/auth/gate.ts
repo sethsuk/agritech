@@ -55,11 +55,17 @@ export const getSession = cache(async (): Promise<Session | null> => {
     .maybeSingle<{ role: UserRole; display_name: string; workers: { active: boolean } | null }>();
   if (!profile) return null;
 
+  // A deactivation bans the auth user, but an already-issued session outlives the ban
+  // until its token expires — check the ban here so it takes effect on the next request,
+  // for staff as well as workers.
+  const banned = !!user.banned_until && Date.parse(user.banned_until) > Date.now();
+  const workerActive = profile.role === "worker" ? profile.workers?.active ?? false : true;
+
   return {
     userId: user.id,
     role: profile.role,
     displayName: profile.display_name,
-    active: profile.role === "worker" ? profile.workers?.active ?? false : true,
+    active: workerActive && !banned,
   };
 });
 

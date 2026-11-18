@@ -76,7 +76,7 @@ WHERE r.correction_of_log_id IS NULL
 --   remaining          what should still be on the tree:
 --                        (latest fruit count, or bloom flowers if never checked)
 --                        − fruit harvested since that check
---   lost               once closed by harvesting: flowers that never became harvested fruit
+--   lost               once closed: flowers that never became harvested fruit
 --   stage              flowering → developing (checked) → harvesting → closed
 -- ---------------------------------------------------------------------------------
 CREATE OR REPLACE VIEW public.set_state WITH (security_invoker = true) AS
@@ -119,8 +119,10 @@ WITH base AS (
 SELECT
   base.*,
   COALESCE(base.latest_fruit_count, base.bloom_flowers, 0) - base.harvested_since_check AS remaining,
+  -- Flowers that never became harvested fruit, once the set is closed (any reason except
+  -- a voided bloom, which never had a real flower count).
   CASE
-    WHEN base.close_reason IN ('harvested_out', 'final_pick')
+    WHEN base.closed_at IS NOT NULL AND base.close_reason <> 'bloom_voided'
       THEN GREATEST(COALESCE(base.bloom_flowers, 0) - base.harvested_total, 0)
   END AS lost,
   CASE
