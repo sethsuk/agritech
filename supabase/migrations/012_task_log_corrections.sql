@@ -21,3 +21,8 @@ ALTER TABLE public.task_logs
 
 CREATE INDEX idx_task_logs_correction_of ON public.task_logs(correction_of_log_id)
   WHERE correction_of_log_id IS NOT NULL;
+
+-- At most one void per record. The void routes check "already voided?" before inserting,
+-- but two concurrent requests could both pass that check; this makes the second fail.
+CREATE UNIQUE INDEX uniq_task_logs_one_void_per_root ON public.task_logs(correction_of_log_id)
+  WHERE correction_type = 'void';

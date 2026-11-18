@@ -2,41 +2,65 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useLang } from "@/lib/i18n/LanguageContext";
-import { t } from "@/lib/i18n/t";
-import { dict, type DictKey } from "@/lib/i18n/dictionary";
+import { useT } from "@/lib/i18n/LanguageContext";
+import type { DictKey } from "@/lib/i18n/dictionary";
 
-const tabs: { href: string; labelKey: DictKey; icon: string }[] = [
+type Tab = { href: string; labelKey: DictKey; icon: string };
+
+/** One tab list for the desktop top nav and the mobile bottom nav. */
+const TABS: Tab[] = [
   { href: "/dashboard", labelKey: "navOverview", icon: "📊" },
-  { href: "/alerts",    labelKey: "navAlerts",    icon: "🔔" },
-  { href: "/workers",   labelKey: "navWorkers",   icon: "👷" },
-  { href: "/trees",     labelKey: "navTrees",     icon: "🌳" },
+  { href: "/alerts",    labelKey: "navAlerts",   icon: "🔔" },
+  { href: "/logs",      labelKey: "navLogs",     icon: "📝" },
+  { href: "/workers",   labelKey: "navWorkers",  icon: "👷" },
+  { href: "/trees",     labelKey: "navTrees",    icon: "🌳" },
 ];
+const OWNER_TAB: Tab = { href: "/managers", labelKey: "navManagers", icon: "🗂️" };
 
-const ownerTab: { href: string; labelKey: DictKey; icon: string } = {
-  href: "/managers", labelKey: "navManagers", icon: "🗂️",
-};
+/** Active on the section and its sub-pages (/trees/AL1-1 highlights Trees). */
+function useActive() {
+  const pathname = usePathname();
+  return (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function ManagerTopNavLinks({ isOwner }: { isOwner?: boolean }) {
+  const { tr } = useT();
+  const isActive = useActive();
+  return (
+    <div className="hidden gap-4 sm:flex">
+      {(isOwner ? [...TABS, OWNER_TAB] : TABS).map((tab) => (
+        <Link
+          key={tab.href}
+          href={tab.href}
+          aria-current={isActive(tab.href) ? "page" : undefined}
+          className={`text-sm hover:text-primary-ink ${isActive(tab.href) ? "font-semibold text-primary-ink" : "text-body"}`}
+        >
+          {tr(tab.labelKey)}
+        </Link>
+      ))}
+    </div>
+  );
+}
 
 export function ManagerBottomNav({ isOwner }: { isOwner?: boolean }) {
-  const pathname = usePathname();
-  const { lang } = useLang();
-  const visibleTabs = isOwner ? [...tabs, ownerTab] : tabs;
-
+  const { tr } = useT();
+  const isActive = useActive();
   return (
     <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden">
       <div className="flex">
-        {visibleTabs.map((tab) => {
-          const active = pathname === tab.href;
+        {(isOwner ? [...TABS, OWNER_TAB] : TABS).map((tab) => {
+          const active = isActive(tab.href);
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex flex-1 flex-col items-center gap-1 py-2 text-xs font-semibold transition ${
+              aria-current={active ? "page" : undefined}
+              className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold ${
                 active ? "text-primary-ink" : "text-muted"
               }`}
             >
-              <span className="text-xl leading-none">{tab.icon}</span>
-              <span className="leading-none">{t(dict[tab.labelKey], lang)}</span>
+              <span aria-hidden className="text-xl leading-none">{tab.icon}</span>
+              <span className="leading-none">{tr(tab.labelKey)}</span>
             </Link>
           );
         })}

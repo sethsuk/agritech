@@ -12,6 +12,7 @@
  * is nothing to reroll; the next day, or a different tree, draws fresh.
  */
 import { createHmac } from "crypto";
+import { bkkDate } from "@/lib/time";
 import type { PhotoRequirementReason, WorkerTrustTier } from "@/types/database";
 
 /**
@@ -30,11 +31,12 @@ export function auditRateFor(tier: WorkerTrustTier): number {
 }
 
 function secret(): string {
-  const s = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!s) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
-  // A different slice from lib/logToken.ts so the audit draw and the token signature
-  // are not derived from the same key material.
-  return s.slice(32, 64) || s.slice(0, 32);
+  const s = process.env.LOG_TOKEN_SECRET;
+  if (!s || s.length < 32) throw new Error("LOG_TOKEN_SECRET is missing or shorter than 32 characters");
+  // Domain-separated from the token signature key (lib/logToken.ts). It used to be a
+  // slice of the service-role JWT — whose payload is largely predictable, which would
+  // let someone precompute which days a photo will be demanded.
+  return createHmac("sha256", s).update("photo-audit-draw-v1").digest("hex");
 }
 
 export interface PhotoAuditKey {
@@ -55,7 +57,7 @@ export function auditDraw({ workerId, treeId, taskDefId, at = new Date() }: Phot
   roll: number;
   seed: string;
 } {
-  const day = at.toISOString().slice(0, 10);
+  const day = bkkDate(at); // Bangkok calendar day — a UTC day would roll over at 07:00
   const seed = createHmac("sha256", secret())
     .update(`${workerId}:${treeId}:${taskDefId}:${day}`)
     .digest("hex");

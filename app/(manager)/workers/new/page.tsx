@@ -2,25 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { t } from "@/lib/i18n/t";
-import { useLang } from "@/lib/i18n/LanguageContext";
-import { dict, type DictKey } from "@/lib/i18n/dictionary";
-
-const LANGUAGES: { value: "my" | "th" | "en"; label: string }[] = [
-  { value: "my", label: "မြန်မာ" },
-  { value: "th", label: "ไทย" },
-  { value: "en", label: "English" },
-];
+import { useT } from "@/lib/i18n/LanguageContext";
+import { errorMessage } from "@/lib/i18n/labels";
+import { api, errorBody } from "@/lib/client/api";
+import { qk } from "@/lib/client/queries";
+import { LANGUAGES } from "@/lib/client/languages";
+import { FormField, RequiredLegend } from "@/components/FormField";
 
 interface CreatedWorker {
   displayName: string;
-  email: string;
+  username: string;
   password: string;
 }
 
 export default function NewWorkerPage() {
-  const { lang } = useLang();
+  const { lang, tr } = useT();
+  const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -30,8 +29,6 @@ export default function NewWorkerPage() {
   const [created, setCreated] = useState<CreatedWorker | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const tr = (key: DictKey) => t(dict[key], lang);
-
   const usernameTrimmed = username.trim().toLowerCase();
   const usernameValid = usernameTrimmed.length === 0 || /^[a-z0-9._-]+$/.test(usernameTrimmed);
   // const zoneList = zones.split(",").map((z) => z.trim().toUpperCase()).filter(Boolean); // workers currently see all zones
@@ -39,7 +36,7 @@ export default function NewWorkerPage() {
   const canSubmit =
     displayName.trim().length > 0 &&
     /^[a-z0-9._-]+$/.test(usernameTrimmed) &&
-    password.length >= 4 &&
+    /^\d{4,6}$/.test(password) &&
     // zoneList.length > 0 &&
     !submitting;
 
@@ -49,26 +46,15 @@ export default function NewWorkerPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/manager/workers", {
+      const data = await api<{ worker: CreatedWorker }>("/api/manager/workers", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          displayName: displayName.trim(),
-          username: usernameTrimmed,
-          password,
-          language,
-          // zones: zoneList, // workers currently see all zones — assigned server-side
-        }),
+        json: { displayName: displayName.trim(), username: usernameTrimmed, password, language },
       });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.detail ?? tr("createAccountFailedToast"));
-        return;
-      }
+      queryClient.invalidateQueries({ queryKey: qk.workers });
       toast.success(tr("workerCreatedToast"));
-      setCreated({ displayName: data.worker.displayName, email: data.worker.email, password: data.worker.password });
-    } catch {
-      toast.error(tr("scanError"));
+      setCreated(data.worker);
+    } catch (err) {
+      toast.error(errorMessage(errorBody(err), lang));
     } finally {
       setSubmitting(false);
     }
@@ -86,7 +72,7 @@ export default function NewWorkerPage() {
 
   async function copyCredentials() {
     if (!created) return;
-    const text = `Email: ${created.email}\nPassword: ${created.password}`;
+    const text = tr("credentialsCopyText", { u: created.username, p: created.password });
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -107,12 +93,12 @@ export default function NewWorkerPage() {
 
           <div className="mt-4 space-y-2 rounded-lg bg-surface-alt p-4 text-left">
             <div>
-              <p className="text-xs text-muted">{tr("loginEmailLabel")}</p>
-              <p className="font-mono text-sm text-ink">{created.email}</p>
+              <p className="text-xs text-muted">{tr("usernameOrEmailLabel")}</p>
+              <p className="font-mono text-sm text-ink">{created.username}</p>
             </div>
             <div>
-              <p className="text-xs text-muted">{tr("passwordFieldLabel")}</p>
-              <p className="font-mono text-sm text-ink">{created.password}</p>
+              <p className="text-xs text-muted">{tr("pinLabel")}</p>
+              <p className="font-mono text-lg tracking-widest text-ink">{created.password}</p>
             </div>
           </div>
           <p className="mt-2 text-xs text-muted">
@@ -153,22 +139,31 @@ export default function NewWorkerPage() {
       <h1 className="mb-6 text-2xl font-bold text-ink">{tr("newWorkerTitle")}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-lg bg-surface p-5 border border-line">
-        <div>
-          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("colName")}</label>
+        <RequiredLegend />
+        <FormField htmlFor="new-worker-name" label={tr("colName")} required>
           <input
+            id="new-worker-name"
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="U Aung"
             required
             className="h-12 w-full rounded-lg border border-line px-4 text-base focus:border-primary focus:outline-none"
           />
-        </div>
+        </FormField>
 
-        <div>
-          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("usernameLabel")}</label>
+        <FormField
+          htmlFor="new-worker-username"
+          label={tr("usernameLabel")}
+          required
+          hint={tr("usernameHint", { u: usernameTrimmed || "worker4" })}
+          error={!usernameValid ? tr("invalidFormat") : undefined}
+        >
           <input
+            id="new-worker-username"
             type="text"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="worker4"
@@ -177,39 +172,39 @@ export default function NewWorkerPage() {
               usernameValid ? "border-line focus:border-primary" : "border-warning"
             }`}
           />
-          <p className="mt-1 text-xs text-muted">
-            {lang === "th"
-              ? `ใช้เข้าสู่ระบบเป็น ${usernameTrimmed || "worker4"}@farm.local — ใช้ตัวอักษร a-z, ตัวเลข, . _ - เท่านั้น`
-              : lang === "my"
-              ? `${usernameTrimmed || "worker4"}@farm.local ဖြင့် လော့ဂ်အင်ဝင်ပါမည် — a-z, ဂဏန်း, . _ - သာ အသုံးပြုပါ`
-              : `Logs in as ${usernameTrimmed || "worker4"}@farm.local — letters a-z, digits, . _ - only`}
-          </p>
-          {!usernameValid && <p className="mt-1 text-xs text-warning-ink">{tr("invalidFormat")}</p>}
-        </div>
+        </FormField>
 
-        <div>
-          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("passwordFieldLabel")}</label>
+        <FormField
+          htmlFor="new-worker-pin"
+          label={tr("pinLabel")}
+          required
+          hint={tr("minPasswordHint")}
+          error={password && !/^\d{4,6}$/.test(password) ? tr("err_weak_pin") : undefined}
+        >
           <input
+            id="new-worker-pin"
             type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={6}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="1111"
+            onChange={(e) => setPassword(e.target.value.replace(/\D/g, ""))}
             required
-            className="h-12 w-full rounded-lg border border-line px-4 text-base focus:border-primary focus:outline-none"
+            className="h-12 w-full rounded-lg border border-line px-4 font-mono text-lg tracking-widest focus:border-primary focus:outline-none"
           />
-          <p className="mt-1 text-xs text-muted">{tr("minPasswordHint")}</p>
-        </div>
+        </FormField>
 
         <div>
-          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("languageFieldLabel")}</label>
-          <div className="flex gap-2">
+          <p className="mb-1.5 text-sm font-semibold text-ink">{tr("languageFieldLabel")}</p>
+          <div className="flex gap-2" role="group" aria-label={tr("languageFieldLabel")}>
             {LANGUAGES.map((l) => (
               <button
                 key={l.value}
                 type="button"
+                aria-pressed={language === l.value}
                 onClick={() => setLanguage(l.value)}
                 className={`h-12 flex-1 rounded-lg text-sm font-semibold ${
-                  language === l.value ? "bg-primary text-white" : "bg-surface-alt text-body"
+                  language === l.value ? "bg-primary text-white" : "border border-line bg-surface-alt text-body"
                 }`}
               >
                 {l.label}
@@ -218,20 +213,6 @@ export default function NewWorkerPage() {
           </div>
         </div>
 
-        {/* Workers currently see all zones — no zone input at creation.
-        <div>
-          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("zonesResponsibleLabel")}</label>
-          <input
-            type="text"
-            value={zones}
-            onChange={(e) => setZones(e.target.value)}
-            placeholder="A"
-            required
-            className="h-12 w-full rounded-lg border border-line px-4 text-base uppercase focus:border-primary focus:outline-none"
-          />
-          <p className="mt-1 text-xs text-muted">{tr("zonesHint")}</p>
-        </div>
-        */}
 
         <button
           type="submit"

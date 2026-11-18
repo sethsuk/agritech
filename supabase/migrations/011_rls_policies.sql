@@ -75,20 +75,6 @@ CREATE POLICY sets_read_for_workers ON public.sets FOR SELECT
 CREATE POLICY sets_read_all_for_staff ON public.sets FOR SELECT
   USING (public.is_manager() OR public.is_owner());
 
--- set_events: same visibility as the parent set; INSERTs via service role only
-ALTER TABLE public.set_events ENABLE ROW LEVEL SECURITY;
-CREATE POLICY set_events_read_for_workers ON public.set_events FOR SELECT
-  USING (public.is_worker());
-  -- USING (
-  --   public.is_worker() AND
-  --   set_id IN (
-  --     SELECT set_id FROM public.sets
-  --     WHERE tree_id IN (SELECT tree_id FROM public.trees WHERE zone = ANY(public.worker_zones(auth.uid())))
-  --   )
-  -- );
-CREATE POLICY set_events_read_all_for_staff ON public.set_events FOR SELECT
-  USING (public.is_manager() OR public.is_owner());
-
 -- alerts: managers/owners read; managers update
 ALTER TABLE public.alerts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY alerts_read_for_staff ON public.alerts FOR SELECT

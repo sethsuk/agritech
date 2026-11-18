@@ -1,15 +1,11 @@
 /**
  * Tree health — the pure half.
  *
- * `trees.derived_health_score` was declared as a 0..1 number with no formula anywhere in
- * the codebase, so every tree rendered a green 100% badge. Inventing a horticultural
+ * `trees.derived_health_score` was a 0..1 number with no formula anywhere in the codebase,
+ * so every tree rendered a green 100% badge (the column has since been dropped). Inventing a horticultural
  * health formula is a farm decision, not a code decision, so health is now stated only
  * in terms of something the system actually knows: how many alerts are open against the
  * tree, and whether any of them is tier 1.
- *
- * `derived_health_score` is consequently no longer read anywhere. It remains in the
- * schema (dropping a column would break other branches mid-flight) but it is dead —
- * see CONTEXT.md.
  *
  * No Supabase import here: client components share these functions with the server.
  */
@@ -36,7 +32,7 @@ export function treeHealthFrom({ openAlerts, hasTier1Alert }: TreeAlertSummary):
 /**
  * Days since the tree was last logged, derived from a stored timestamp.
  *
- * The old `derived_days_since_last_log` column stored the integer `0` on every submit and
+ * The old `derived_days_since_last_log` column (now dropped) stored the integer `0` on every submit and
  * never counted up, so a tree logged six months ago still read "0 days ago". A day count
  * is a function of *when you ask*, so it cannot be cached as an integer at all — only the
  * timestamp can. Returns null for a tree that has never been logged.

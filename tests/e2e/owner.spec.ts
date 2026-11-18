@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { loginAs } from "./helpers";
+import { loginAs, loginWith, th } from "./helpers";
 
 // e2e_ prefix: matched and deleted by global-teardown.ts after the run.
 const username = `e2e_manager_${Date.now()}`;
@@ -45,10 +45,7 @@ test.describe.serial("owner: create, view, and remove a manager", () => {
   });
 
   test("the new manager can log in", async ({ page }) => {
-    await page.goto("/login");
-    await page.locator('input[type="email"]').fill(`${username}@farm.local`);
-    await page.locator('input[type="password"]').fill(password);
-    await page.locator('button[type="submit"]').click();
+    await loginWith(page, `${username}@farm.local`, password);
     await expect(page).toHaveURL(/\/dashboard/);
   });
 
@@ -62,11 +59,8 @@ test.describe.serial("owner: create, view, and remove a manager", () => {
   });
 
   test("the deactivated manager can no longer log in", async ({ page }) => {
-    await page.goto("/login");
-    await page.locator('input[type="email"]').fill(`${username}@farm.local`);
-    await page.locator('input[type="password"]').fill(password);
-    await page.locator('button[type="submit"]').click();
-    await expect(page.getByText("อีเมลหรือรหัสผ่านไม่ถูกต้อง")).toBeVisible();
+    await loginWith(page, `${username}@farm.local`, password);
+    await expect(page.getByText(th("err_account_inactive")).or(page.getByText(th("loginError")))).toBeVisible();
     await expect(page).toHaveURL(/\/login/);
   });
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { formatDateTime } from "@/lib/time";
 import { t, taskDisplayName } from "@/lib/i18n/t";
 import { WorkerHeader } from "@/components/worker/WorkerHeader";
 import { useLang } from "@/lib/i18n/LanguageContext";
@@ -63,10 +64,10 @@ export default function MyLogsPage() {
                   <span className="text-2xl">{def?.icon ?? "📋"}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-ink">
-                      {def ? taskDisplayName(def, lang) : log.task_type}
+                      {def ? taskDisplayName(def, lang) : "—"}
                     </p>
                     <p className="truncate text-base text-muted">
-                      {log.tree_id} · {new Date(log.submitted_at).toLocaleString("th-TH")}
+                      {log.tree_id} · {formatDateTime(log.submitted_at, lang)}
                     </p>
                     {(log.voided || log.amendmentCount > 0) && (
                       <span

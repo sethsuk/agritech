@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { t } from "@/lib/i18n/t";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict, type DictKey } from "@/lib/i18n/dictionary";
+import { errorMessage } from "@/lib/i18n/labels";
 
 interface CreatedManager {
   displayName: string;
@@ -30,7 +31,7 @@ export function NewManagerForm() {
   const canSubmit =
     displayName.trim().length > 0 &&
     /^[a-z0-9._-]+$/.test(usernameTrimmed) &&
-    password.length >= 4 &&
+    password.length >= 8 &&
     !submitting;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -44,15 +45,15 @@ export function NewManagerForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ displayName: displayName.trim(), username: usernameTrimmed, password }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data.detail ?? tr("createAccountFailedToast"));
+        toast.error(errorMessage(data, lang));
         return;
       }
       toast.success(tr("managerCreatedToast"));
       setCreated({ displayName: data.manager.displayName, email: data.manager.email, password: data.manager.password });
     } catch {
-      toast.error(tr("scanError"));
+      toast.error(tr("err_network"));
     } finally {
       setSubmitting(false);
     }
@@ -175,7 +176,7 @@ export function NewManagerForm() {
             required
             className="h-12 w-full rounded-lg border border-line px-4 text-base focus:border-primary focus:outline-none"
           />
-          <p className="mt-1 text-xs text-muted">{tr("minPasswordHint")}</p>
+          <p className="mt-1 text-xs text-muted">{tr("managerPasswordHint")}</p>
         </div>
 
         <button

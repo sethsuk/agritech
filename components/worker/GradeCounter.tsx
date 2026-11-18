@@ -52,12 +52,13 @@ export function GradeCounter({ options, value, min = 0, max = 200, step = 1, onC
               <span className="text-lg">{opt.icon}</span>
               {t(opt.label, lang)}
             </span>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setCount(opt.value, Math.max(min, count - step))}
                 disabled={count <= min}
-                className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-alt text-lg font-bold text-body active:bg-surface-press disabled:opacity-30"
+                aria-label={`− ${t(opt.label, lang)}`}
+                className="flex h-15 w-15 items-center justify-center rounded-lg bg-surface-alt text-2xl font-bold text-body active:bg-surface-press disabled:opacity-30"
               >
                 −
               </button>
@@ -70,13 +71,15 @@ export function GradeCounter({ options, value, min = 0, max = 200, step = 1, onC
                 onChange={(e) => setDrafts((d) => ({ ...d, [opt.value]: e.target.value }))}
                 onFocus={(e) => e.target.select()}
                 onBlur={() => commitDraft(opt.value)}
-                className="h-10 w-15 rounded-lg border border-line text-center text-lg font-bold text-ink focus:border-primary focus:outline-none [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+                aria-label={t(opt.label, lang)}
+                className="h-15 w-16 rounded-lg border border-line text-center text-lg font-bold text-ink focus:border-primary focus:outline-none [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
               />
               <button
                 type="button"
                 onClick={() => setCount(opt.value, Math.min(max, count + step))}
                 disabled={count >= max}
-                className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-tint text-lg font-bold text-primary-ink active:bg-primary-tint disabled:opacity-30"
+                aria-label={`+ ${t(opt.label, lang)}`}
+                className="flex h-15 w-15 items-center justify-center rounded-lg bg-primary-tint text-2xl font-bold text-primary-ink active:bg-primary-tint disabled:opacity-30"
               >
                 +
               </button>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireOwner } from "@/lib/auth/requireStaff";
+import { requireOwner } from "@/lib/auth/gate";
 
 // PATCH /api/owner/managers/:userId — deactivate/reactivate a manager account. Owner only.
 
@@ -36,7 +36,7 @@ export async function PATCH(
     ban_duration: active ? "none" : "876000h",
   });
   if (banErr) {
-    return NextResponse.json({ error: "Failed to update manager" }, { status: 500 });
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

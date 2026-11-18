@@ -4,10 +4,10 @@
 // redirect to /login still forces the route to compile) so the timed tests don't pay
 // that cost mid-assertion.
 const ROUTES = [
-  "/", "/login", "/scan", "/dashboard", "/alerts", "/trees", "/workers", "/workers/new",
+  "/", "/login", "/scan", "/dashboard", "/alerts", "/trees", "/trees/new", "/trees/AL5-5", "/logs", "/workers", "/workers/new",
   "/workers/warmup", "/managers", "/managers/new", "/my-logs", "/my-logs/warmup",
   "/tree/AL5-5", "/tree/AL5-5/task/watering_v1",
-  "/api/health", "/api/task-definitions", "/api/trees/AL5-5",
+  "/api/health", "/api/task-definitions", "/api/trees/AL5-5", "/api/manager/overview",
 ];
 
 export default async function globalSetup() {

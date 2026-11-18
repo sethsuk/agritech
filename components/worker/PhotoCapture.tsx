@@ -6,6 +6,7 @@ import imageCompression from "browser-image-compression";
 import { t } from "@/lib/i18n/t";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { dict } from "@/lib/i18n/dictionary";
+import { errorMessage } from "@/lib/i18n/labels";
 
 type Props = {
   photoUrl: string | null;
@@ -38,8 +39,10 @@ export function PhotoCapture({ photoUrl, onChange }: Props) {
       fd.append("file", compressed, "photo.jpg");
       const res = await fetch("/api/upload-photo", { method: "POST", body: fd });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? t(dict.photoUploadFailed, lang));
+        // The API returns a code; show it in the worker's language (it used to show
+        // raw English / Thai server strings).
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ? errorMessage(data, lang) : t(dict.photoUploadFailed, lang));
       }
       const { url } = await res.json() as { url: string };
       onChange(url);
@@ -60,9 +63,10 @@ export function PhotoCapture({ photoUrl, onChange }: Props) {
         <button
           type="button"
           onClick={() => onChange(null)}
-          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-lg text-white"
+          aria-label={t(dict.photoRetake, lang)}
+          className="absolute right-2 top-2 flex min-h-15 items-center gap-2 rounded-full bg-black/70 px-4 text-base font-semibold text-white"
         >
-          ✕
+          ↺ {t(dict.photoRetake, lang)}
         </button>
       </div>
     );

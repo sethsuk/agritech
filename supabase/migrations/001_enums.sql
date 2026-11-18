@@ -1,5 +1,8 @@
 CREATE TYPE tree_status AS ENUM ('active', 'retired', 'dead');
-CREATE TYPE set_status AS ENUM ('flowering', 'developing', 'harvesting', 'harvested', 'failed');
+-- Why a set stopped being open. Derived by sync_set() (014) except 'failed', which a
+-- manager sets by hand. A set's lifecycle *stage* (flowering/developing/harvesting) is
+-- not stored at all — the set_state view derives it from the logs.
+CREATE TYPE set_close_reason AS ENUM ('harvested_out', 'final_pick', 'all_dropped', 'failed', 'bloom_voided');
 CREATE TYPE worker_trust_tier AS ENUM ('trusted', 'standard', 'audit');
 CREATE TYPE worker_language AS ENUM ('my', 'th', 'en');
 CREATE TYPE photo_policy_mode AS ENUM ('always', 'audit_only', 'never');

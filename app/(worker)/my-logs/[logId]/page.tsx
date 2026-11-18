@@ -2,20 +2,34 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { t, taskDisplayName } from "@/lib/i18n/t";
 import { WorkerHeader } from "@/components/worker/WorkerHeader";
 import { TaskFormRenderer } from "@/components/worker/TaskFormRenderer";
-import { useLang } from "@/lib/i18n/LanguageContext";
-import { dict } from "@/lib/i18n/dictionary";
-import type { DbTaskLog, DbTaskDefinition } from "@/types/database";
+import { FormField } from "@/components/FormField";
+import { useT } from "@/lib/i18n/LanguageContext";
+import { errorMessage, formValueLabel } from "@/lib/i18n/labels";
+import { api, errorBody } from "@/lib/client/api";
+import { qk } from "@/lib/client/queries";
+import { formatDateTime } from "@/lib/time";
+import type { DbTaskLog, DbTaskDefinition, TaskField } from "@/types/database";
+
+/**
+ * Fields that identify which set a record belongs to can't be corrected (the server
+ * refuses with locked_field) — moving fruit between sets is a void-and-relog. They're
+ * shown read-only instead of as editable inputs.
+ */
+const isLockedField = (taskType: string, f: TaskField) =>
+  f.type === "set_picker" || (taskType === "bloom_log" && f.field_id === "color");
 
 type Mode = "view" | "correct" | "void";
 
 export default function MyLogDetailPage() {
   const { logId } = useParams<{ logId: string }>();
   const router = useRouter();
-  const { lang } = useLang();
+  const { lang, tr } = useT();
+  const queryClient = useQueryClient();
 
   const [trail, setTrail] = useState<DbTaskLog[] | null>(null);
   const [taskDef, setTaskDef] = useState<DbTaskDefinition | null>(null);
@@ -24,8 +38,7 @@ export default function MyLogDetailPage() {
   const [editFormData, setEditFormData] = useState<Record<string, unknown>>({});
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const tr = (key: keyof typeof dict) => t(dict[key], lang);
+  const [reasonError, setReasonError] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -73,42 +86,39 @@ export default function MyLogDetailPage() {
   async function refreshTrail() {
     const refreshed = await fetch(`/api/my-logs/${logId}`).then((r) => r.json());
     setTrail(refreshed.trail);
+    // Corrections/voids change set counts and the records list.
+    queryClient.invalidateQueries({ queryKey: qk.myLogs });
+    queryClient.invalidateQueries({ queryKey: qk.workerTree(root.tree_id) });
   }
 
   function startCorrection() {
     setEditFormData({ ...currentFormData });
     setReason("");
+    setReasonError(false);
     setMode("correct");
   }
 
   function startVoid() {
     setReason("");
+    setReasonError(false);
     setMode("void");
   }
 
   async function submitCorrection(e: React.FormEvent) {
     e.preventDefault();
     if (!reason.trim()) {
-      toast.error(tr("reasonRequiredError"));
+      setReasonError(true);
+      document.getElementById("reason")?.focus();
       return;
     }
     setSaving(true);
     try {
-      const res = await fetch(`/api/my-logs/${logId}/correct`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ formData: editFormData, reason }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        toast.error(data?.error === "log_already_voided" ? tr("alreadyVoidedError") : tr("correctionFailedToast"));
-        return;
-      }
+      await api(`/api/my-logs/${logId}/correct`, { method: "POST", json: { formData: editFormData, reason } });
       toast.success(tr("correctionSuccessToast"));
       await refreshTrail();
       setMode("view");
-    } catch {
-      toast.error(tr("correctionFailedToast"));
+    } catch (err) {
+      toast.error(errorMessage(errorBody(err), lang, { fields: taskDef?.fields }), { duration: 6000 });
     } finally {
       setSaving(false);
     }
@@ -117,26 +127,18 @@ export default function MyLogDetailPage() {
   async function submitVoid(e: React.FormEvent) {
     e.preventDefault();
     if (!reason.trim()) {
-      toast.error(tr("reasonRequiredError"));
+      setReasonError(true);
+      document.getElementById("reason")?.focus();
       return;
     }
     setSaving(true);
     try {
-      const res = await fetch(`/api/my-logs/${logId}/void`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        toast.error(data?.error === "log_already_voided" ? tr("alreadyVoidedError") : tr("voidFailedToast"));
-        return;
-      }
+      await api(`/api/my-logs/${logId}/void`, { method: "POST", json: { reason } });
       toast.success(tr("voidSuccessToast"));
       await refreshTrail();
       setMode("view");
-    } catch {
-      toast.error(tr("voidFailedToast"));
+    } catch (err) {
+      toast.error(errorMessage(errorBody(err), lang), { duration: 6000 });
     } finally {
       setSaving(false);
     }
@@ -146,7 +148,7 @@ export default function MyLogDetailPage() {
     <div className="flex min-h-dvh flex-col">
       <WorkerHeader
         variant="back"
-        title={taskDef ? taskDisplayName(taskDef, lang) : root.task_type}
+        title={taskDef ? taskDisplayName(taskDef, lang) : "—"}
         onBack={() => (mode !== "view" ? setMode("view") : router.push("/my-logs"))}
       />
 
@@ -157,7 +159,7 @@ export default function MyLogDetailPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-lg font-bold text-ink">{root.tree_id}</p>
-                  <p className="text-base text-muted">{new Date(root.submitted_at).toLocaleString("th-TH")}</p>
+                  <p className="text-base text-muted">{formatDateTime(root.submitted_at, lang)}</p>
                 </div>
                 {voided && (
                   <span className="rounded-full bg-warning-tint px-3 py-1 text-base font-semibold text-warning-ink">
@@ -183,17 +185,18 @@ export default function MyLogDetailPage() {
                     >
                       {entryLabel(entry)}
                     </span>
-                    <span className="text-base text-muted">{new Date(entry.submitted_at).toLocaleString("th-TH")}</span>
+                    <span className="text-base text-muted">{formatDateTime(entry.submitted_at, lang)}</span>
                   </div>
                   {entry.correction_reason && (
                     <p className="mt-2 text-base text-body">{entry.correction_reason}</p>
                   )}
-                  {entry.correction_type !== "void" && (
+                  {entry.correction_type !== "void" && taskDef && (
+                    // Through the task's own field labels — not raw keys and JSON.
                     <dl className="mt-2 space-y-1">
-                      {Object.entries(entry.form_data).map(([k, v]) => (
-                        <div key={k} className="flex justify-between text-base">
-                          <dt className="text-muted">{k}</dt>
-                          <dd className="text-body">{typeof v === "object" ? JSON.stringify(v) : String(v)}</dd>
+                      {taskDef.fields.filter((f) => f.type !== "set_picker").map((f) => (
+                        <div key={f.field_id} className="flex justify-between gap-3 text-base">
+                          <dt className="text-muted">{f.label_icon} {t(f.label, lang)}</dt>
+                          <dd className="text-right font-semibold text-body">{formValueLabel(f, entry.form_data[f.field_id], lang)}</dd>
                         </div>
                       ))}
                     </dl>
@@ -222,23 +225,25 @@ export default function MyLogDetailPage() {
         )}
 
         {mode === "correct" && taskDef && (
-          <form onSubmit={submitCorrection} className="space-y-4">
+          <form onSubmit={submitCorrection} noValidate className="space-y-4">
+            {taskDef.fields.filter((f) => isLockedField(root.task_type, f)).map((f) => (
+              <div key={f.field_id} className="rounded-lg border border-line bg-surface-alt p-4 text-base text-muted">
+                🔒 {t(f.label, lang)}{f.type !== "set_picker" && `: ${formValueLabel(f, editFormData[f.field_id], lang)}`}
+              </div>
+            ))}
             <TaskFormRenderer
-              fields={taskDef.fields}
+              fields={taskDef.fields.filter((f) => !isLockedField(root.task_type, f))}
               formData={editFormData}
               onChange={(field, value) => setEditFormData((prev) => ({ ...prev, [field]: value }))}
             />
 
-            <div className="rounded-lg border border-line bg-surface p-4">
-              <label className="mb-2 block text-lg font-semibold text-body">{tr("correctReasonLabel")}</label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder={tr("correctReasonPlaceholder")}
-                rows={3}
-                className="w-full rounded-lg border border-line px-3 py-2 text-base focus:border-primary focus:outline-none"
-              />
-            </div>
+            <ReasonField
+              label={tr("correctReasonLabel")}
+              placeholder={tr("correctReasonPlaceholder")}
+              value={reason}
+              onChange={(v) => { setReason(v); if (v.trim()) setReasonError(false); }}
+              error={reasonError ? tr("reasonRequiredError") : undefined}
+            />
 
             <div className="fixed inset-x-0 bottom-0 border-t border-line bg-surface p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
               <div className="mx-auto max-w-md">
@@ -255,21 +260,19 @@ export default function MyLogDetailPage() {
         )}
 
         {mode === "void" && (
-          <form onSubmit={submitVoid} className="space-y-4">
-            <div className="rounded-lg border border-line bg-surface p-4">
-              <p className="text-base text-body">{tr("voidConfirmMessage")}</p>
+          <form onSubmit={submitVoid} noValidate className="space-y-4">
+            <div className="rounded-lg border border-warning bg-warning-tint p-4">
+              <p className="text-lg font-semibold text-warning-ink">{tr("voidConfirmTitle")}</p>
+              <p className="mt-1 text-base text-body">{tr("voidConfirmMessage")}</p>
             </div>
 
-            <div className="rounded-lg border border-line bg-surface p-4">
-              <label className="mb-2 block text-lg font-semibold text-body">{tr("voidReasonLabel")}</label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder={tr("voidReasonPlaceholder")}
-                rows={3}
-                className="w-full rounded-lg border border-line px-3 py-2 text-base focus:border-primary focus:outline-none"
-              />
-            </div>
+            <ReasonField
+              label={tr("voidReasonLabel")}
+              placeholder={tr("voidReasonPlaceholder")}
+              value={reason}
+              onChange={(v) => { setReason(v); if (v.trim()) setReasonError(false); }}
+              error={reasonError ? tr("reasonRequiredError") : undefined}
+            />
 
             <div className="fixed inset-x-0 bottom-0 border-t border-line bg-surface p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
               <div className="mx-auto max-w-md">
@@ -285,6 +288,29 @@ export default function MyLogDetailPage() {
           </form>
         )}
       </main>
+    </div>
+  );
+}
+
+/** The required reason box, with the red * and an inline error (not just a toast). */
+function ReasonField({
+  label, placeholder, value, onChange, error,
+}: { label: string; placeholder: string; value: string; onChange: (v: string) => void; error?: string }) {
+  return (
+    <div className={`rounded-lg bg-surface p-4 ${error ? "border-2 border-warning" : "border border-line"}`}>
+      <FormField htmlFor="reason" label={<span className="text-lg">{label}</span>} required error={error}>
+        <textarea
+          id="reason"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          rows={3}
+          required
+          aria-invalid={!!error || undefined}
+          aria-describedby={error ? "reason-error" : undefined}
+          className="w-full rounded-lg border border-line px-3 py-2 text-base focus:border-primary focus:outline-none"
+        />
+      </FormField>
     </div>
   );
 }
