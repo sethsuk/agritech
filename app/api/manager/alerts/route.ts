@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth/gate";
+import { fetchAll } from "@/lib/supabase/fetchAll";
 
 // GET /api/manager/alerts — every active alert plus the most recent closed ones, in one
 // response. The page filters by status client-side, so switching tabs needs no request.
@@ -16,8 +17,9 @@ export async function GET() {
   const { admin } = gate;
 
   const [active, closed] = await Promise.all([
-    admin.from("alerts").select(SELECT).in("status", ["open", "reviewed"])
-      .order("created_at", { ascending: false }),
+    // Every active alert — paged past PostgREST's 1000-row cap.
+    fetchAll((from, to) => admin.from("alerts").select(SELECT).in("status", ["open", "reviewed"])
+      .order("created_at", { ascending: false }).order("alert_id").range(from, to)),
     admin.from("alerts").select(SELECT).in("status", ["resolved", "dismissed"])
       .order("resolution_resolved_at", { ascending: false, nullsFirst: false })
       .limit(CLOSED_LIMIT),

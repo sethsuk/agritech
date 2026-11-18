@@ -21,6 +21,7 @@ export const qk = {
   workers: ["workers"] as const,
   worker: (id: string) => ["worker", id] as const,
   logs: (f: LogFilters) => ["logs", f] as const,
+  logGrades: (f: Omit<LogFilters, "page">) => ["logGrades", f] as const,
   log: (id: string) => ["log", id] as const,
   workerTree: (id: string) => ["workerTree", id] as const,
   myLogs: ["myLogs"] as const,
@@ -76,7 +77,14 @@ export interface Overview {
 }
 
 export function useOverview() {
-  return useQuery({ queryKey: qk.overview, queryFn: () => api<Overview>("/api/manager/overview") });
+  return useQuery({
+    queryKey: qk.overview,
+    queryFn: () => api<Overview>("/api/manager/overview"),
+    // The snapshot is cheap now (rollups), so let it refresh itself a little: a tab left
+    // open overnight shouldn't keep showing yesterday as "today".
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+  });
 }
 
 // --- Alerts ---
@@ -174,7 +182,6 @@ export interface LogsPage {
   total: number;
   page: number;
   pageSize: number;
-  fruitByGrade: Record<string, number> | null;
 }
 
 export function useLogs(filters: LogFilters) {
@@ -185,6 +192,18 @@ export function useLogs(filters: LogFilters) {
     queryKey: qk.logs(filters),
     queryFn: () => api<LogsPage>(`/api/manager/logs?${qs}`),
     placeholderData: keepPreviousData,
+  });
+}
+
+/** Fruit by grade for the Logs filters (rollup-backed). Independent of the page number. */
+export function useLogGrades(filters: Omit<LogFilters, "page">, enabled: boolean) {
+  const qs = new URLSearchParams(
+    Object.entries({ ...filters, grades: "1" }).filter(([, v]) => v !== "").map(([k, v]) => [k, String(v)]),
+  );
+  return useQuery({
+    queryKey: qk.logGrades(filters),
+    queryFn: () => api<{ fruitByGrade: Record<string, number> }>(`/api/manager/logs?${qs}`).then((r) => r.fruitByGrade),
+    enabled,
   });
 }
 

@@ -27,6 +27,8 @@ export default async function globalTeardown() {
     await pg.query(`DELETE FROM public.task_logs WHERE correction_of_log_id IS NOT NULL AND ${scope}`);
     await pg.query(`DELETE FROM public.task_logs WHERE ${scope}`);
     await pg.query(`DELETE FROM public.trees WHERE tree_id LIKE 'Z%'`);
+    // Direct deletes bypass the write RPCs that maintain the daily rollups — recompute them.
+    await pg.query(`SELECT public.rollup_rebuild()`);
     await pg.query("COMMIT");
   } catch (err) {
     await pg.query("ROLLBACK");

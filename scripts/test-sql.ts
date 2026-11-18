@@ -109,6 +109,7 @@ async function concurrencyTest() {
     await a.query(`DELETE FROM task_logs WHERE tree_id = $1 AND correction_of_log_id IS NOT NULL`, [tree]);
     await a.query(`DELETE FROM task_logs WHERE tree_id = $1`, [tree]);
     await a.query(`DELETE FROM trees WHERE tree_id = $1`, [tree]);
+    await a.query(`SELECT rollup_rebuild()`); // direct deletes bypass rollup maintenance
     await a.end(); await b.end();
   }
 }

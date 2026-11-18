@@ -82,9 +82,12 @@ lockout/CAPTCHA). The deterministic photo-audit draw (`lib/photoAudit.ts`) can b
 
 - `supabase/migrations/*.sql` + `types/database.ts` (hand-written) are the **actual, live schema**.
   Tables: `users`, `workers`, `trees`, `task_definitions`, `assignments`, `task_logs`, `sets`,
-  `alerts`. Views (`013_views.sql`): `effective_task_logs`, `set_state`, `worker_stats`,
-  `tree_summary`. Functions (`014_functions.sql`): `submit_task_log`, `correct_task_log`,
-  `void_task_log`, `sync_set`, `dashboard_snapshot`.
+  `alerts`, plus the rollups `daily_log_counts` / `daily_fruit` (`016`). Views:
+  `effective_task_logs`, `set_state` (`013`), `worker_stats`, `tree_summary` (`016`). Functions
+  (`014`): `submit_task_log`, `correct_task_log`, `void_task_log`, `manager_set_failed`,
+  `sync_set`, `set_available_at`, `dashboard_snapshot`; (`016`) `rollup_apply`, `rollup_rebuild`,
+  `fruit_by_grade`. Migrations from `015` on are additive and re-runnable (`IF NOT EXISTS`, self
+  backfilling) — prefer that over editing old table migrations, so deployed DBs never need a wipe.
 - `docs/PLAN.md` describes an **earlier iteration** of the data model (and `prisma/schema.prisma`,
   now deleted, described the same dead design). Don't use it as a reference for the current schema.
 - `docs/durian_build_spec.md`, `docs/durian_schema.md`, and `docs/durian_system_docs.md` document the
@@ -231,11 +234,21 @@ directly double-counts corrections and counts voided records.
 
 ### Derived state — computed in SQL, never stored
 
-Nothing derived is cached in a column (see CONTEXT.md "Derived state"). The views in
-`013_views.sql` compute on read:
-- `worker_stats` — logs, flagged ("needs review"), average completion time; all-time + last 90 days.
-- `tree_summary` — last log, open alerts (open + reviewed), tier-1 present, open sets.
+Nothing derived is cached in a column (see CONTEXT.md "Derived state"). Computed on read:
+- `worker_stats` — logs, flagged ("needs review"), average completion time; all-time + last 90
+  days — summed from the daily rollups.
+- `tree_summary` — last log (top-1 index lookup per tree), open alerts (open + reviewed), tier-1
+  present, open sets.
 - `set_state` — a set plus bloom flowers, latest fruit count, harvested, remaining, lost, stage.
+
+**Daily rollups (the scaling layer, `016_rollups.sql`).** `daily_log_counts` (day × zone × side ×
+task × worker × status → count, completion-time sums) and `daily_fruit` (… × grade → fruit). The
+write RPCs maintain them in the same transaction via `rollup_apply(root, ±1)` (−1 before an
+amendment, +1 after), so they're exact and have one writer. Dashboard counts/fruit,
+`worker_stats` and the Logs page's grade totals read these instead of scanning every log —
+measured at 300k logs: dashboard ≈ 65 ms vs ≈ 3 s for the old full scans. **Any direct
+INSERT/UPDATE/DELETE of `task_logs` outside the RPCs (test cleanup, data fixes) must be followed
+by `SELECT rollup_rebuild()`**; `tests/sql/04_*` asserts incremental == rebuild.
 
 Aggregate in SQL, not by fetching rows into JS: PostgREST silently caps every response at 1000
 rows (a client `.range(0, 9999)` can't raise it). For a list that can exceed 1000 rows, page with
@@ -272,7 +285,8 @@ ranges are calendar periods (week starts Monday).
 ### Client data — TanStack Query
 
 Pages fetch through hooks in `lib/client/queries.ts` (cache keys in `qk`), backed by a
-`QueryClient` in `components/QueryProvider.tsx` with `staleTime: Infinity`. Data loads once and is
+`QueryClient` in `components/QueryProvider.tsx` with `staleTime: Infinity` (the dashboard
+snapshot is the exception: 60 s + refetch on focus, so an overnight tab isn't stuck on yesterday). Data loads once and is
 reused across pages until the user taps Refresh (`RefreshBar`) or a mutation invalidates it, so
 filter/tab switches are instant. The manager overview is a single RPC (`dashboard_snapshot`)
 pre-grouped by every zone × range, so switching zone/range on the dashboard makes no request. After

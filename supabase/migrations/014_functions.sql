@@ -278,6 +278,7 @@ BEGIN
     v_status, v_flags, p->>'notes_text'
   )
   RETURNING log_id INTO v_log_id;
+  PERFORM public.rollup_apply(v_log_id, 1); -- daily rollups (016) — same transaction
 
   IF v_type = 'bloom_log' THEN
     v_days  := public.maturation_days(v_variety);
@@ -421,6 +422,7 @@ BEGIN
     END IF;
   END IF;
 
+  PERFORM public.rollup_apply(v_root.log_id, -1); -- remove the old contribution…
   INSERT INTO public.task_logs (
     tree_id, task_def_id, task_type, assignment_id, worker_id, set_id,
     submitted_at, form_opened_at, qr_scanned_at, qr_value, gps_lat, gps_long, gps_delta_meters,
@@ -436,6 +438,7 @@ BEGIN
     v_root.log_id, 'correction', p_reason
   )
   RETURNING log_id INTO v_new;
+  PERFORM public.rollup_apply(v_root.log_id, 1); -- …and add the corrected one
 
   IF v_root.task_type = 'harvest' THEN
     PERFORM public.sync_over_harvest_alert(v_root.log_id, v_exceeds, v_root.tree_id, v_root.worker_id);
@@ -478,6 +481,7 @@ BEGIN
     RETURN jsonb_build_object('error', 'set_has_activity');
   END IF;
 
+  PERFORM public.rollup_apply(v_root.log_id, -1); -- a voided record contributes nothing
   INSERT INTO public.task_logs (
     tree_id, task_def_id, task_type, assignment_id, worker_id, set_id,
     submitted_at, form_opened_at, qr_scanned_at, qr_value,
@@ -562,54 +566,49 @@ DECLARE
   v_week  TIMESTAMPTZ := date_trunc('week',  v_local) AT TIME ZONE 'Asia/Bangkok';
   v_month TIMESTAMPTZ := date_trunc('month', v_local) AT TIME ZONE 'Asia/Bangkok';
   v_year  TIMESTAMPTZ := date_trunc('year',  v_local) AT TIME ZONE 'Asia/Bangkok';
+  -- The same bounds as Bangkok calendar dates, for the daily rollups.
+  d_today DATE := v_local::date;
+  d_week  DATE := date_trunc('week',  v_local)::date;
+  d_month DATE := date_trunc('month', v_local)::date;
+  d_year  DATE := date_trunc('year',  v_local)::date;
   v_stale TIMESTAMPTZ := NOW() - make_interval(days => p_stale_days);
   v_result JSONB;
 BEGIN
-  WITH logs AS (
-    SELECT zone, side, task_type, form_data, submitted_at FROM public.effective_task_logs
-  ),
-  log_counts AS (
+  -- Counts and fruit come from the daily rollups (016) — their size grows with days ×
+  -- zones × workers, not with the number of logs, so this stays fast as history grows.
+  WITH log_counts AS (
     SELECT zone, side,
-      COUNT(*) FILTER (WHERE submitted_at >= v_today) AS today,
-      COUNT(*) FILTER (WHERE submitted_at >= v_week)  AS week,
-      COUNT(*) FILTER (WHERE submitted_at >= v_month) AS month,
-      COUNT(*) FILTER (WHERE submitted_at >= v_year)  AS year,
-      COUNT(*)                                        AS "all"
-    FROM logs GROUP BY zone, side
+      SUM(n) FILTER (WHERE day >= d_today) AS today,
+      SUM(n) FILTER (WHERE day >= d_week)  AS week,
+      SUM(n) FILTER (WHERE day >= d_month) AS month,
+      SUM(n) FILTER (WHERE day >= d_year)  AS year,
+      SUM(n)                               AS "all"
+    FROM public.daily_log_counts GROUP BY zone, side
   ),
   fruit AS (
-    SELECT l.zone, l.side, g.key AS grade,
-      COALESCE(SUM(g.n) FILTER (WHERE l.submitted_at >= v_today), 0) AS today,
-      COALESCE(SUM(g.n) FILTER (WHERE l.submitted_at >= v_week),  0) AS week,
-      COALESCE(SUM(g.n) FILTER (WHERE l.submitted_at >= v_month), 0) AS month,
-      COALESCE(SUM(g.n) FILTER (WHERE l.submitted_at >= v_year),  0) AS year,
-      COALESCE(SUM(g.n), 0)                                          AS "all"
-    FROM logs l
-    CROSS JOIN LATERAL (
-      SELECT key, CASE WHEN value ~ '^\d+$' THEN value::int ELSE 0 END AS n
-      FROM jsonb_each_text(CASE WHEN jsonb_typeof(l.form_data->'grade_counts') = 'object'
-                                THEN l.form_data->'grade_counts' ELSE '{}'::jsonb END)
-    ) g
-    WHERE l.task_type = 'harvest'
-    GROUP BY l.zone, l.side, g.key
+    SELECT zone, side, grade,
+      COALESCE(SUM(n) FILTER (WHERE day >= d_today), 0) AS today,
+      COALESCE(SUM(n) FILTER (WHERE day >= d_week),  0) AS week,
+      COALESCE(SUM(n) FILTER (WHERE day >= d_month), 0) AS month,
+      COALESCE(SUM(n) FILTER (WHERE day >= d_year),  0) AS year,
+      COALESCE(SUM(n), 0)                               AS "all"
+    FROM public.daily_fruit GROUP BY zone, side, grade
+  ),
+  zones AS (
+    SELECT zone, side, COUNT(*) AS n FROM public.trees WHERE status = 'active' GROUP BY zone, side
   ),
   stale AS (
     SELECT tree_id, zone, side, last_log_at,
       ROW_NUMBER() OVER (PARTITION BY zone, side ORDER BY last_log_at ASC NULLS FIRST, tree_id) AS rn
     FROM public.tree_summary
     WHERE status = 'active' AND (last_log_at IS NULL OR last_log_at < v_stale)
-  ),
-  recent AS (
-    SELECT e.*, ROW_NUMBER() OVER (PARTITION BY e.zone, e.side ORDER BY e.submitted_at DESC) AS rn
-    FROM public.effective_task_logs e
   )
   SELECT jsonb_build_object(
     'generatedAt', NOW(),
     'staleDays', p_stale_days,
     'bounds', jsonb_build_object('today', v_today, 'week', v_week, 'month', v_month, 'year', v_year),
     'zones', COALESCE((
-      SELECT jsonb_agg(jsonb_build_object('zone', zone, 'side', side, 'trees', n) ORDER BY zone, side)
-      FROM (SELECT zone, side, COUNT(*) AS n FROM public.trees WHERE status = 'active' GROUP BY zone, side) z
+      SELECT jsonb_agg(jsonb_build_object('zone', zone, 'side', side, 'trees', n) ORDER BY zone, side) FROM zones
     ), '[]'::jsonb),
     'logCounts', COALESCE((SELECT jsonb_agg(to_jsonb(lc)) FROM log_counts lc), '[]'::jsonb),
     'fruit', COALESCE((SELECT jsonb_agg(to_jsonb(f)) FROM fruit f), '[]'::jsonb),
@@ -637,8 +636,10 @@ BEGIN
         'color', s.color, 'harvest_window_end', s.harvest_window_end, 'remaining', s.remaining
       ) ORDER BY s.harvest_window_end)
       FROM public.set_state s JOIN public.trees t ON t.tree_id = s.tree_id
-      WHERE s.closed_at IS NULL AND s.harvest_window_end < v_local::date
+      WHERE s.closed_at IS NULL AND s.harvest_window_end < d_today
     ), '[]'::jsonb),
+    -- The 20 newest per zone: a LIMIT per zone walking the recent-roots index, instead of
+    -- ranking every log with a window function.
     'recentLogs', COALESCE((
       SELECT jsonb_agg(jsonb_build_object(
         'log_id', r.log_id, 'tree_id', r.tree_id, 'zone', r.zone, 'side', r.side,
@@ -646,7 +647,13 @@ BEGIN
         'submitted_at', r.submitted_at, 'validation_status', r.validation_status,
         'validation_flags', r.validation_flags
       ) ORDER BY r.submitted_at DESC)
-      FROM recent r WHERE r.rn <= 20
+      FROM zones z
+      CROSS JOIN LATERAL (
+        SELECT e.* FROM public.effective_task_logs e
+        WHERE e.zone = z.zone AND e.side = z.side
+        ORDER BY e.submitted_at DESC
+        LIMIT 20
+      ) r
     ), '[]'::jsonb)
   ) INTO v_result;
 

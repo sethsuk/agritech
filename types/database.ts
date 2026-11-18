@@ -339,6 +339,10 @@ export interface Database {
       void_task_log: { Args: { p_log_id: string; p_worker: string; p_reason: string }; Returns: RpcResult };
       dashboard_snapshot: { Args: { p_stale_days: number }; Returns: unknown };
       manager_set_failed: { Args: { p_set: string; p_failed: boolean }; Returns: RpcResult };
+      fruit_by_grade: {
+        Args: { p_since?: string | null; p_zone?: string | null; p_side?: string | null; p_worker?: string | null; p_status?: ValidationStatus | null };
+        Returns: Record<string, number>;
+      };
     };
   };
 }

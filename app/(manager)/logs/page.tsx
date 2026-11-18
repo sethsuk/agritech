@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useT } from "@/lib/i18n/LanguageContext";
 import { flagLabel, sortTaskDefs, taskLabel, validationStatusLabel } from "@/lib/i18n/labels";
 import { taskDisplayName } from "@/lib/i18n/t";
-import { useLogs, useOverview, useTaskDefs, useWorkers, type LogFilters } from "@/lib/client/queries";
+import { useLogGrades, useLogs, useOverview, useTaskDefs, useWorkers, type LogFilters } from "@/lib/client/queries";
 import { formatDateTime, RANGE_KEYS, type RangeKey } from "@/lib/time";
 import { parseZoneKey, zoneKey } from "@/lib/treeId";
 import { chipClass, validationBadgeClass } from "@/lib/ui/badges";
@@ -48,6 +48,8 @@ function Logs() {
     page: Math.max(0, Number(params.get("page") ?? 0) || 0),
   };
   const logs = useLogs(filters);
+  const gradeFilters = { range: filters.range, zone: filters.zone, task: filters.task, worker: filters.worker, status: filters.status };
+  const grades = useLogGrades(gradeFilters, filters.task === "harvest");
 
   const setFilter = (key: keyof LogFilters, value: string) => {
     const qs = new URLSearchParams(params);
@@ -106,13 +108,13 @@ function Logs() {
         </div>
       </div>
 
-      {logs.data?.fruitByGrade && (
+      {grades.data && (
         <section className="mb-4 rounded-lg border border-line bg-surface p-4" aria-label={tr("gradeSummaryTitle")}>
           <h2 className="mb-2 text-sm font-semibold text-body">
-            {tr("gradeSummaryTitle")} · {Object.values(logs.data.fruitByGrade).reduce((a, b) => a + b, 0)} {tr("fruitCountUnit")}
+            {tr("gradeSummaryTitle")} · {Object.values(grades.data).reduce((a, b) => a + b, 0)} {tr("fruitCountUnit")}
           </h2>
           <div className="flex flex-wrap gap-2">
-            {Object.entries(logs.data.fruitByGrade)
+            {Object.entries(grades.data)
               .sort((a, b) => GRADE_ORDER.indexOf(a[0]) - GRADE_ORDER.indexOf(b[0]))
               .map(([g, n]) => (
                 <span key={g} className="rounded-full border border-line bg-surface-alt px-3 py-1.5 text-xs font-semibold text-body">
