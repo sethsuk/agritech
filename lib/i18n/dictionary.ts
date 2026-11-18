@@ -1,12 +1,15 @@
-// Static UI strings for the worker flow + login page (th/my/en).
-// Task-definition content (labels, options) lives in the DB as I18nString already —
-// this file only covers hardcoded JSX text.
+// Every static UI string in the app, in all three languages (th/my/en).
+// Task-definition content (labels, options) lives in the DB as I18nString instead.
+//
+// Prefixed keys are looked up dynamically by lib/i18n/labels.ts — `err_<code>` (API error
+// codes), `rej_<code>` (field rejections), `flag_<flag>`, `alert_<subtype>`, `stage_<stage>`
+// — so a grep for the full key won't find their call sites. Use `{name}` placeholders
+// for interpolation (tr("key", { name })).
 import type { I18nString } from "@/types/database";
 
 export const dict = {
   loginTitle: { th: "ระบบสวนทุเรียน", my: "ဒူးရင်းဥယျာဉ်စနစ်", en: "Durian Farm System" },
   loginSubtitle: { th: "กรุณาลงชื่อเข้าใช้", my: "ကျေးဇူးပြု၍ လော့ဂ်အင်ဝင်ပါ", en: "Please sign in" },
-  emailLabel: { th: "อีเมล", my: "အီးမေးလ်", en: "Email" },
   passwordLabel: { th: "รหัสผ่าน / PIN", my: "စကားဝှက် / ပင်နံပါတ်", en: "Password / PIN" },
   loginButton: { th: "เข้าสู่ระบบ", my: "လော့ဂ်အင်ဝင်ရန်", en: "Sign in" },
   loginLoading: { th: "กำลังเข้าสู่ระบบ...", my: "လော့ဂ်အင်ဝင်နေသည်...", en: "Signing in..." },
@@ -27,30 +30,23 @@ export const dict = {
   scanOr: { th: "หรือพิมพ์รหัสต้นไม้", my: "သို့မဟုတ် ပင်နံပါတ်ကို ရိုက်ထည့်ပါ", en: "Or type the tree ID" },
   scanSearch: { th: "ค้นหา", my: "ရှာဖွေရန်", en: "Search" },
   scanNotFound: { th: "ไม่พบต้นไม้รหัสนี้", my: "ဤပင်နံပါတ်ကို မတွေ့ပါ", en: "Tree not found" },
-  scanError: { th: "เกิดข้อผิดพลาด ลองอีกครั้ง", my: "အမှားဖြစ်သွားသည် ထပ်စမ်းကြည့်ပါ", en: "Something went wrong, try again" },
   cameraUnavailableToast: { th: "ไม่สามารถเข้าถึงกล้อง ใช้การพิมพ์รหัสแทน", my: "ကင်မရာကို အသုံးမပြုနိုင်ပါ ပင်နံပါတ်ကို ရိုက်ထည့်ပါ", en: "Camera unavailable — type the ID instead" },
   cameraUnavailableTitle: { th: "ไม่สามารถเข้าถึงกล้อง", my: "ကင်မရာကို အသုံးမပြုနိုင်ပါ", en: "Camera unavailable" },
   cameraUnavailableHint: { th: "กรุณาใช้ช่องพิมพ์รหัสด้านล่างแทน", my: "အောက်ပါ ပင်နံပါတ်အကွက်ကို အသုံးပြုပါ", en: "Please use the ID field below instead" },
   cameraLoading: { th: "กำลังเปิดกล้อง...", my: "ကင်မရာဖွင့်နေသည်...", en: "Opening camera..." },
 
   treeNotFound: { th: "ไม่พบต้นไม้", my: "သစ်ပင်ကို မတွေ့ပါ", en: "Tree not found" },
-  treeLoadError: { th: "โหลดข้อมูลต้นไม้ไม่สำเร็จ", my: "သစ်ပင်အချက်အလက် ရယူ၍မရပါ", en: "Failed to load tree data" },
   backToScan: { th: "กลับไปสแกน", my: "စကင်ဖတ်ရန် ပြန်သွားရန်", en: "Back to scan" },
   activeSets: { th: "ชุดผลที่กำลังพัฒนา", my: "ကြီးထွားနေသော အသီးအပွင့်များ", en: "Developing fruit sets" },
   fruitCountUnit: { th: "ผล", my: "လုံး", en: "fruit" },
   chooseTask: { th: "เลือกงานที่จะทำ", my: "လုပ်ဆောင်ရန် အလုပ်ကို ရွေးပါ", en: "Choose a task" },
   exitTree: { th: "ออกจากต้นนี้ · สแกนต้นใหม่", my: "ဒီပင်မှ ထွက်ရန် · အသစ်စကင်ဖတ်ရန်", en: "Exit this tree · scan a new one" },
-  treeStatusActive: { th: "ใช้งาน", my: "အသုံးပြုနေသည်", en: "Active" },
   treeTitlePrefix: { th: "ต้น", my: "ပင်", en: "Tree" },
   rowLabel: { th: "แถว", my: "အတန်း", en: "Row" },
   positionLabel: { th: "ตำแหน่ง", my: "နေရာ", en: "Position" },
 
   formLoadError: { th: "โหลดฟอร์มไม่สำเร็จ", my: "ဖောင်ကို ရယူ၍မရပါ", en: "Failed to load form" },
   exitFormConfirm: { th: "ออกจากฟอร์มนี้? ข้อมูลที่กรอกไว้จะหายไป", my: "ဤဖောင်မှ ထွက်မလား? ထည့်ထားသောအချက်အလက်များ ပျောက်သွားပါမည်", en: "Leave this form? Your entered data will be lost" },
-  photoRequiredError: { th: "กรุณาถ่ายรูปก่อนบันทึก", my: "မှတ်တမ်းတင်မီ ဓာတ်ပုံရိုက်ပါ", en: "Please take a photo before submitting" },
-  fieldRequiredError: { th: "กรุณากรอก", my: "ဖြည့်ပါ", en: "Please fill in" },
-  submissionRejected: { th: "ข้อมูลไม่ถูกต้อง", my: "အချက်အလက် မှားနေသည်", en: "Submission rejected" },
-  submitError: { th: "บันทึกไม่สำเร็จ ลองอีกครั้ง", my: "မှတ်တမ်းတင်၍မရပါ ထပ်စမ်းကြည့်ပါ", en: "Failed to save, try again" },
   submitFlagged: { th: "บันทึกแล้ว (มีข้อสังเกต)", my: "မှတ်တမ်းတင်ပြီးပါပြီ (သတိပြုရန်ရှိသည်)", en: "Saved (flagged for review)" },
   submitSuccess: { th: "บันทึกข้อมูลเรียบร้อย ✓", my: "မှတ်တမ်းတင်ပြီးပါပြီ ✓", en: "Saved successfully ✓" },
   submitButton: { th: "บันทึก", my: "မှတ်တမ်းတင်ရန်", en: "Submit" },
@@ -80,14 +76,11 @@ export const dict = {
   dashboardTitle: { th: "ภาพรวมฟาร์ม", my: "လယ်ယာမြေ ခြုံငုံသုံးသပ်ချက်", en: "Farm overview" },
   statOpenAlerts: { th: "การแจ้งเตือนที่เปิดอยู่", my: "ဖွင့်ထားသော သတိပေးချက်များ", en: "Open alerts" },
   statUrgentAlerts: { th: "การแจ้งเตือนด่วน", my: "အရေးပေါ် သတိပေးချက်များ", en: "Urgent alerts" },
-  statLogsToday: { th: "บันทึกวันนี้", my: "ယနေ့ မှတ်တမ်းများ", en: "Logs today" },
-  statLogsThisWeek: { th: "บันทึกสัปดาห์นี้", my: "ဒီအပတ် မှတ်တမ်းများ", en: "Logs this week" },
   recentAlertsTitle: { th: "การแจ้งเตือนล่าสุด", my: "လတ်တလော သတိပေးချက်များ", en: "Recent alerts" },
   viewAll: { th: "ดูทั้งหมด", my: "အားလုံးကြည့်ရန်", en: "View all" },
   noOpenAlerts: { th: "ไม่มีการแจ้งเตือนที่เปิดอยู่", my: "ဖွင့်ထားသော သတိပေးချက် မရှိပါ", en: "No open alerts" },
   recentLogsTitle: { th: "บันทึกล่าสุด", my: "လတ်တလော မှတ်တမ်းများ", en: "Recent logs" },
   noLogsYet: { th: "ยังไม่มีบันทึก", my: "မှတ်တမ်း မရှိသေးပါ", en: "No logs yet" },
-  loadOverviewError: { th: "โหลดข้อมูลไม่สำเร็จ", my: "အချက်အလက် ရယူ၍မရပါ", en: "Failed to load data" },
   alertTierUrgent: { th: "ด่วน", my: "အရေးပေါ်", en: "Urgent" },
   alertTierModerate: { th: "ปานกลาง", my: "အလယ်အလတ်", en: "Moderate" },
   alertTierInfo: { th: "ข้อมูล", my: "အချက်အလက်", en: "Info" },
@@ -107,16 +100,13 @@ export const dict = {
   noAlertsAtAll: { th: "ไม่มีการแจ้งเตือน", my: "သတိပေးချက် မရှိပါ", en: "No alerts" },
   dismissAction: { th: "ปิด", my: "ပိတ်ရန်", en: "Dismiss" },
   zoneLabel: { th: "โซน", my: "ဇုန်", en: "Zone" },
-  loadAlertsError: { th: "โหลดการแจ้งเตือนไม่สำเร็จ", my: "သတိပေးချက် ရယူ၍မရပါ", en: "Failed to load alerts" },
   alertDismissedToast: { th: "ปิดการแจ้งเตือน", my: "သတိပေးချက်ကို ပိတ်လိုက်သည်", en: "Alert dismissed" },
-  actionFailedToast: { th: "ดำเนินการไม่สำเร็จ", my: "လုပ်ဆောင်မှု မအောင်မြင်ပါ", en: "Action failed" },
 
   tierTrusted: { th: "เชื่อถือ", my: "ယုံကြည်ရသော", en: "Trusted" },
   tierStandard: { th: "ปกติ", my: "ပုံမှန်", en: "Standard" },
   tierAudit: { th: "ตรวจสอบ", my: "စစ်ဆေးဆဲ", en: "Audit" },
   trustTierLabel: { th: "ระดับความเชื่อถือ", my: "ယုံကြည်ရမှု အဆင့်", en: "Trust tier" },
   trustTierUpdatedToast: { th: "ปรับระดับความเชื่อถือแล้ว ✓", my: "ယုံကြည်ရမှု အဆင့် ပြောင်းပြီးပါပြီ ✓", en: "Trust tier updated ✓" },
-  trustTierUpdateFailedToast: { th: "ปรับระดับความเชื่อถือไม่สำเร็จ", my: "ယုံကြည်ရမှု အဆင့် ပြောင်း၍မရပါ", en: "Failed to update trust tier" },
   noWorkersYet: { th: "ยังไม่มีคนงาน", my: "အလုပ်သမား မရှိသေးပါ", en: "No workers yet" },
   totalLogsPrefix: { th: "บันทึก", my: "မှတ်တမ်း", en: "Logs" },
   flagRatePrefix: { th: "ต้องตรวจสอบ", my: "စစ်ဆေးရန်", en: "Needs review" },
@@ -131,12 +121,10 @@ export const dict = {
   clearFilter: { th: "ล้างตัวกรอง", my: "စစ်ထုတ်မှု ရှင်းရန်", en: "Clear filter" },
   addTreeButton: { th: "+ เพิ่มต้นไม้", my: "+ ဒူးရင်းပင် ထည့်ရန်", en: "+ Add tree" },
   addWorkerButton: { th: "+ เพิ่มคนงาน", my: "+ အလုပ်သမား ထည့်ရန်", en: "+ Add worker" },
-  createAccountFailedToast: { th: "สร้างบัญชีไม่สำเร็จ", my: "အကောင့် ဖန်တီး၍မရပါ", en: "Failed to create account" },
   workerCreatedToast: { th: "สร้างบัญชีคนงานเรียบร้อย ✓", my: "အလုပ်သမား အကောင့် ဖန်တီးပြီးပါပြီ ✓", en: "Worker account created ✓" },
   copiedToast: { th: "คัดลอกแล้ว", my: "ကူးယူပြီးပါပြီ", en: "Copied" },
   copyFailedToast: { th: "คัดลอกไม่สำเร็จ", my: "ကူးယူ၍မရပါ", en: "Copy failed" },
   accountCreatedTitle: { th: "สร้างบัญชีแล้ว", my: "အကောင့် ဖန်တီးပြီးပါပြီ", en: "Account created" },
-  loginEmailLabel: { th: "อีเมลเข้าสู่ระบบ", my: "လော့ဂ်အင်ဝင်ရန် အီးမေးလ်", en: "Login email" },
   passwordFieldLabel: { th: "รหัสผ่าน", my: "စကားဝှက်", en: "Password" },
   credentialsWarningHint: {
     th: "จดหรือบอกข้อมูลนี้ให้คนงานโดยตรง — ระบบจะไม่แสดงรหัสผ่านอีก",
@@ -151,13 +139,9 @@ export const dict = {
   usernameLabel: { th: "ชื่อผู้ใช้", my: "အသုံးပြုသူအမည်", en: "Username" },
   minPasswordHint: { th: "PIN ตัวเลข 4–6 หลัก", my: "ဂဏန်း ၄–၆ လုံး ပင်နံပါတ်", en: "A 4–6 digit PIN" },
   languageFieldLabel: { th: "ภาษา", my: "ဘာသာစကား", en: "Language" },
-  zonesResponsibleLabel: { th: "โซนที่รับผิดชอบ", my: "တာဝန်ယူရသော ဇုန်", en: "Responsible zones" },
-  zonesHint: { th: "ตัวอักษรโซน คั่นด้วยจุลภาค เช่น A,B", my: "ဇုန်အက္ခရာများ ကော်မာဖြင့်ခွဲပါ ဥပမာ A,B", en: "Zone letters, comma-separated, e.g. A,B" },
   creatingAccount: { th: "กำลังสร้าง...", my: "ဖန်တီးနေသည်...", en: "Creating..." },
   createAccountButton: { th: "สร้างบัญชี", my: "အကောင့် ဖန်တီးရန်", en: "Create account" },
 
-  workerNotFound: { th: "ไม่พบคนงาน", my: "အလုပ်သမားကို မတွေ့ပါ", en: "Worker not found" },
-  workerLoadError: { th: "โหลดข้อมูลคนงานไม่สำเร็จ", my: "အလုပ်သမား အချက်အလက် ရယူ၍မရပါ", en: "Failed to load worker data" },
   inactiveBadge: { th: "ปิดใช้งานแล้ว", my: "ပိတ်ထားသည်", en: "Deactivated" },
   deactivateWorkerButton: { th: "🚫 ปิดใช้งานคนงานนี้", my: "🚫 ဤအလုပ်သမားကို ပိတ်ရန်", en: "🚫 Deactivate this worker" },
   reactivateWorkerButton: { th: "♻️ เปิดใช้งานอีกครั้ง", my: "♻️ ပြန်လည်အသုံးပြုရန်", en: "♻️ Reactivate" },
@@ -173,7 +157,6 @@ export const dict = {
   addAnotherManagerButton: { th: "เพิ่มผู้จัดการอีกคน", my: "မန်နေဂျာ နောက်တစ်ဦး ထည့်ရန်", en: "Add another manager" },
   goToManagersList: { th: "ไปที่รายชื่อผู้จัดการ", my: "မန်နေဂျာစာရင်းသို့ သွားရန်", en: "Go to managers list" },
   noManagersFound: { th: "ยังไม่มีผู้จัดการ", my: "မန်နေဂျာ မရှိသေးပါ", en: "No managers yet" },
-  managerNotFound: { th: "ไม่พบผู้จัดการ", my: "မန်နေဂျာကို မတွေ့ပါ", en: "Manager not found" },
   deactivateManagerButton: { th: "🚫 ปิดใช้งานผู้จัดการนี้", my: "🚫 ဤမန်နေဂျာကို ပိတ်ရန်", en: "🚫 Deactivate this manager" },
   reactivateManagerButton: { th: "♻️ เปิดใช้งานอีกครั้ง", my: "♻️ ပြန်လည်အသုံးပြုရန်", en: "♻️ Reactivate" },
   deactivateManagerTitle: { th: "ปิดใช้งานผู้จัดการนี้?", my: "ဤမန်နေဂျာကို ပိတ်မလား?", en: "Deactivate this manager?" },
@@ -210,10 +193,7 @@ export const dict = {
   retireTreeButton: { th: "🗑️ ปลดระวางต้นไม้นี้", my: "🗑️ ဒီပင်ကို ပယ်ဖျက်ရန်", en: "🗑️ Retire this tree" },
   reactivateTreeButton: { th: "♻️ เปิดใช้งานอีกครั้ง", my: "♻️ ပြန်လည်အသုံးပြုရန်", en: "♻️ Reactivate" },
   gpsUnsupported: { th: "อุปกรณ์นี้ไม่รองรับ GPS", my: "ဤစက်ပစ္စည်းသည် GPS ကို မထောက်ပံ့ပါ", en: "Device doesn't support GPS" },
-  gpsReadFailed: { th: "ไม่สามารถอ่านตำแหน่ง GPS ได้", my: "GPS တည်နေရာ ဖတ်၍မရပါ", en: "Couldn't read GPS location" },
-  saveFailedToast: { th: "บันทึกไม่สำเร็จ", my: "သိမ်းဆည်း၍မရပါ", en: "Save failed" },
   savedToast: { th: "บันทึกแล้ว ✓", my: "သိမ်းဆည်းပြီးပါပြီ ✓", en: "Saved ✓" },
-  genericErrorToast: { th: "เกิดข้อผิดพลาด", my: "အမှားအယွင်း ဖြစ်ပွားခဲ့သည်", en: "An error occurred" },
   retiredToast: { th: "ปลดระวางแล้ว", my: "ပယ်ဖျက်ပြီးပါပြီ", en: "Retired" },
   reactivatedToast: { th: "เปิดใช้งานแล้ว", my: "ပြန်လည်အသုံးပြုပြီးပါပြီ", en: "Reactivated" },
 
@@ -234,7 +214,6 @@ export const dict = {
   addAnotherTree: { th: "เพิ่มต้นไม้อีกต้น", my: "နောက်ထပ်ပင် ထည့်ရန်", en: "Add another tree" },
   viewDetails: { th: "ดูรายละเอียด", my: "အသေးစိတ် ကြည့်ရန်", en: "View details" },
   treeCreatedToast: { th: "สร้างต้นไม้เรียบร้อย ✓", my: "ဒူးရင်းပင် ဖန်တီးပြီးပါပြီ ✓", en: "Tree created ✓" },
-  createTreeFailedToast: { th: "สร้างต้นไม้ไม่สำเร็จ", my: "ဒူးရင်းပင် ဖန်တီး၍မရပါ", en: "Failed to create tree" },
   gpsReadFailedRetry: {
     th: "ไม่สามารถอ่านตำแหน่ง GPS ได้ กรุณาลองใหม่ที่ต้นไม้",
     my: "GPS တည်နေရာ ဖတ်၍မရပါ ဒီပင်ဆီမှာ ထပ်စမ်းကြည့်ပါ",
@@ -247,7 +226,6 @@ export const dict = {
   myLogsNavLabel: { th: "บันทึกของฉัน", my: "ကျွန်ုပ်၏ မှတ်တမ်းများ", en: "My records" },
   myLogsTitle: { th: "บันทึกของฉัน", my: "ကျွန်ုပ်၏ မှတ်တမ်းများ", en: "My records" },
   myLogsEmpty: { th: "ยังไม่มีบันทึก", my: "မှတ်တမ်း မရှိသေးပါ", en: "No records yet" },
-  myLogsLoadError: { th: "โหลดบันทึกไม่สำเร็จ", my: "မှတ်တမ်းများ ရယူ၍မရပါ", en: "Failed to load records" },
   correctedBadge: { th: "แก้ไขแล้ว", my: "ပြင်ဆင်ပြီး", en: "Corrected" },
   voidedBadge: { th: "ยกเลิกแล้ว", my: "ပယ်ဖျက်ပြီး", en: "Voided" },
   correctButton: { th: "✏️ แก้ไขบันทึกนี้", my: "✏️ ဤမှတ်တမ်းကို ပြင်ဆင်ရန်", en: "✏️ Correct this record" },
@@ -265,15 +243,10 @@ export const dict = {
   saveCorrectionButton: { th: "บันทึกการแก้ไข", my: "ပြင်ဆင်ချက် သိမ်းရန်", en: "Save correction" },
   correctionSuccessToast: { th: "แก้ไขบันทึกเรียบร้อย ✓", my: "မှတ်တမ်း ပြင်ဆင်ပြီးပါပြီ ✓", en: "Record corrected ✓" },
   voidSuccessToast: { th: "ยกเลิกบันทึกเรียบร้อย ✓", my: "မှတ်တမ်း ပယ်ဖျက်ပြီးပါပြီ ✓", en: "Record voided ✓" },
-  alreadyVoidedError: { th: "บันทึกนี้ถูกยกเลิกไปแล้ว", my: "ဤမှတ်တမ်းကို ပယ်ဖျက်ပြီးဖြစ်သည်", en: "This record was already voided" },
-  correctionFailedToast: { th: "แก้ไขไม่สำเร็จ ลองอีกครั้ง", my: "ပြင်ဆင်၍မရပါ ထပ်စမ်းကြည့်ပါ", en: "Correction failed, try again" },
-  voidFailedToast: { th: "ยกเลิกไม่สำเร็จ ลองอีกครั้ง", my: "ပယ်ဖျက်၍မရပါ ထပ်စမ်းကြည့်ပါ", en: "Void failed, try again" },
   auditTrailTitle: { th: "ประวัติการเปลี่ยนแปลง", my: "ပြောင်းလဲမှု မှတ်တမ်း", en: "Change history" },
   originalSubmissionLabel: { th: "บันทึกต้นฉบับ", my: "မူရင်း မှတ်တမ်း", en: "Original submission" },
   correctionLabel: { th: "การแก้ไข", my: "ပြင်ဆင်ချက်", en: "Correction" },
   voidLabel: { th: "การยกเลิก", my: "ပယ်ဖျက်ချက်", en: "Void" },
-  viewRecordButton: { th: "ดูรายละเอียด", my: "အသေးစိတ် ကြည့်ရန်", en: "View" },
-  backToMyLogs: { th: "กลับไปบันทึกของฉัน", my: "ကျွန်ုပ်၏ မှတ်တမ်းများသို့ ပြန်သွားရန်", en: "Back to my records" },
   reasonRequiredError: { th: "กรุณาระบุเหตุผล", my: "အကြောင်းရင်း ဖော်ပြပါ", en: "Please provide a reason" },
   // Tree health — stated as open-alert status, not an invented score. See lib/derived/treeHealth.ts.
   healthOk: { th: "ปกติ", my: "ပုံမှန်", en: "OK" },
@@ -399,7 +372,6 @@ export const dict = {
   alertReopenedToast: { th: "เปิดปัญหาอีกครั้งแล้ว", my: "ပြဿနာကို ပြန်ဖွင့်ပြီး", en: "Issue reopened" },
   alertResolvedToast: { th: "แก้ไขแล้ว", my: "ဖြေရှင်းပြီး", en: "Marked resolved" },
   undoAction: { th: "เลิกทำ", my: "ပြန်ဖျက်ရန်", en: "Undo" },
-  alertNoteLabel: { th: "หมายเหตุ (ไม่บังคับ)", my: "မှတ်ချက် (မဖြစ်မနေ မဟုတ်)", en: "Note (optional)" },
   viewLogLink: { th: "ดูบันทึกที่เกี่ยวข้อง", my: "သက်ဆိုင်ရာ မှတ်တမ်း ကြည့်ရန်", en: "View the log" },
   filterUrgentOnly: { th: "เฉพาะด่วน", my: "အရေးပေါ်သာ", en: "Urgent only" },
 
@@ -410,7 +382,6 @@ export const dict = {
   filterWorker: { th: "คนงาน", my: "အလုပ်သမား", en: "Worker" },
   filterStatus: { th: "สถานะ", my: "အခြေအနေ", en: "Status" },
   filterRange: { th: "ช่วงเวลา", my: "အချိန်", en: "Period" },
-  logDetailTitle: { th: "รายละเอียดบันทึก", my: "မှတ်တမ်း အသေးစိတ်", en: "Log details" },
   gpsDistanceLabel: { th: "ระยะจากต้น", my: "ပင်မှ အကွာအဝေး", en: "Distance from tree" },
   metersUnit: { th: "ม.", my: "မီတာ", en: "m" },
   submittedByLabel: { th: "บันทึกโดย", my: "တင်သူ", en: "Logged by" },
@@ -444,6 +415,9 @@ export const dict = {
   photoRetake: { th: "ถ่ายใหม่", my: "ပြန်ရိုက်ရန်", en: "Retake" },
   recentTreesTitle: { th: "ต้นล่าสุด", my: "လတ်တလော ပင်များ", en: "Recent trees" },
   numberRangeNotice: { th: "ต้องอยู่ระหว่าง {min} ถึง {max} — ยังไม่ได้เปลี่ยนค่า", my: "{min} မှ {max} အတွင်း ဖြစ်ရမည် — တန်ဖိုး မပြောင်းရသေးပါ", en: "Must be between {min} and {max} — value not changed" },
+  deactivateManagerMsg: { th: "ปิดใช้งาน {name}? ผู้จัดการคนนี้จะเข้าสู่ระบบไม่ได้อีก (เปิดใช้งานใหม่ได้ภายหลัง)", my: "{name} ကို ပိတ်မလား? လော့ဂ်အင်ဝင်နိုင်တော့မည် မဟုတ်ပါ (နောက်မှ ပြန်ဖွင့်နိုင်)", en: "Deactivate {name}? They won't be able to log in (you can reactivate them later)." },
+  reactivateManagerMsg: { th: "เปิดใช้งาน {name} อีกครั้ง?", my: "{name} ကို ပြန်လည်အသုံးပြုမလား?", en: "Reactivate {name}?" },
+  passwordCopyText: { th: "ชื่อผู้ใช้: {u}\nรหัสผ่าน: {p}", my: "အသုံးပြုသူအမည်: {u}\nစကားဝှက်: {p}", en: "Username: {u}\nPassword: {p}" },
 } as const satisfies Record<string, I18nString>;
 
 export type DictKey = keyof typeof dict;

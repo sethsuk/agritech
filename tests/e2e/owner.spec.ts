@@ -38,7 +38,7 @@ test.describe.serial("owner: create, view, and remove a manager", () => {
     await page.locator('button[type="submit"]').click();
 
     await expect(page.getByText("สร้างบัญชีแล้ว")).toBeVisible();
-    await expect(page.getByText(`${username}@farm.local`)).toBeVisible();
+    await expect(page.getByText(username, { exact: true })).toBeVisible();
 
     await page.getByRole("link", { name: "ไปที่รายชื่อผู้จัดการ" }).click();
     await expect(page.getByText(displayName)).toBeVisible();

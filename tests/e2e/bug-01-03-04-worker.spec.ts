@@ -22,7 +22,7 @@ test.describe("worker screens", () => {
       const expected = formatDateTime(data!.submitted_at, "th"); // Bangkok, Buddhist year
 
       await page.goto("/my-logs");
-      await expect(page.locator("main button").filter({ hasText: treeId }).first()).toContainText(expected);
+      await expect(page.locator("main li a").filter({ hasText: treeId }).first()).toContainText(expected);
     });
   });
 
@@ -46,7 +46,7 @@ test.describe("worker screens", () => {
     await submitTask(page);
     await expect(page).toHaveURL(new RegExp(`/tree/${treeId}$`));
     await page.goto("/my-logs");
-    await page.locator("main button").filter({ hasText: treeId }).first().click();
+    await page.locator("main li a").filter({ hasText: treeId }).first().click();
     await page.getByRole("button", { name: th("correctButton") }).click();
 
     const label = page.locator('label[for="reason"]');

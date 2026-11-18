@@ -22,16 +22,29 @@ export async function GET() {
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 
-  // public.users has no `active` column (unlike workers) — ban state lives on the
-  // auth user. Fine to fetch per-row at single-digit manager counts.
-  const withStatus = await Promise.all(
-    (managers ?? []).map(async (m) => {
-      const { data } = await admin.auth.admin.getUserById(m.id);
-      const bannedUntil = data.user?.banned_until;
-      const active = !bannedUntil || new Date(bannedUntil).getTime() <= Date.now();
-      return { id: m.id, displayName: m.display_name, email: data.user?.email ?? null, active };
-    }),
-  );
+  // public.users has no `active` column (unlike workers) — ban state lives on the auth
+  // user. One listUsers pass instead of a getUserById round trip per manager.
+  const ids = new Set((managers ?? []).map((m) => m.id));
+  const authById = new Map<string, { email: string | null; active: boolean }>();
+  for (let page = 1; page <= 20 && authById.size < ids.size; page++) {
+    const { data, error: listErr } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (listErr) return NextResponse.json({ error: "server_error" }, { status: 500 });
+    for (const u of data.users) {
+      if (!ids.has(u.id)) continue;
+      const bannedUntil = (u as { banned_until?: string | null }).banned_until;
+      authById.set(u.id, {
+        email: u.email ?? null,
+        active: !bannedUntil || new Date(bannedUntil).getTime() <= Date.now(),
+      });
+    }
+    if (data.users.length < 200) break;
+  }
+  const withStatus = (managers ?? []).map((m) => ({
+    id: m.id,
+    displayName: m.display_name,
+    email: authById.get(m.id)?.email ?? null,
+    active: authById.get(m.id)?.active ?? true,
+  }));
 
   return NextResponse.json({ managers: withStatus });
 }
@@ -88,5 +101,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 
-  return NextResponse.json({ manager: { id: userId, displayName, email, password } });
+  return NextResponse.json({ manager: { id: userId, displayName, username, email, password } });
 }

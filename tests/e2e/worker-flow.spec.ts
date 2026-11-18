@@ -26,7 +26,7 @@ test.describe.serial("worker submission, correction, and void flow", () => {
 
   test("submitted log appears in my-logs with the right value", async ({ page }) => {
     await page.goto("/my-logs");
-    const firstEntry = page.locator("main button").first();
+    const firstEntry = page.locator("main li a").first();
     await expect(firstEntry).toContainText("รดน้ำ");
     await expect(firstEntry).toContainText(TREE_ID);
     await firstEntry.click();
@@ -40,7 +40,7 @@ test.describe.serial("worker submission, correction, and void flow", () => {
 
   test("correcting the log updates the value and shows a corrected badge", async ({ page }) => {
     await page.goto("/my-logs");
-    await page.locator("main button").first().click();
+    await page.locator("main li a").first().click();
 
     await page.getByRole("button", { name: th("correctButton") }).click();
     await page.getByRole("button", { name: /^\+\d/ }).click();
@@ -51,12 +51,12 @@ test.describe.serial("worker submission, correction, and void flow", () => {
     await expect(page.getByText("10", { exact: true })).toBeVisible();
 
     await page.goto("/my-logs");
-    await expect(page.locator("main button").first()).toContainText(th("correctedBadge"));
+    await expect(page.locator("main li a").first()).toContainText(th("correctedBadge"));
   });
 
   test("voiding the log shows a voided badge and hides the action buttons", async ({ page }) => {
     await page.goto("/my-logs");
-    await page.locator("main button").first().click();
+    await page.locator("main li a").first().click();
 
     await page.getByRole("button", { name: th("voidButton") }).click();
     // Reason is required — shown inline, not just as a toast.
@@ -70,6 +70,6 @@ test.describe.serial("worker submission, correction, and void flow", () => {
     await expect(page.getByRole("button", { name: th("correctButton") })).toHaveCount(0);
 
     await page.goto("/my-logs");
-    await expect(page.locator("main button").first()).toContainText(th("voidedBadge"));
+    await expect(page.locator("main li a").first()).toContainText(th("voidedBadge"));
   });
 });

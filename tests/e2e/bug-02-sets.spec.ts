@@ -80,7 +80,7 @@ test.describe.serial("bloom → fruit count → harvest lifecycle", () => {
 
   test("voiding the over-harvest reopens the set with 5 left again", async ({ page }) => {
     await page.goto("/my-logs");
-    await page.locator("main button").filter({ hasText: treeId }).first().click();
+    await page.locator("main li a").filter({ hasText: treeId }).first().click();
     await page.getByRole("button", { name: th("voidButton") }).click();
     await page.getByLabel(th("voidReasonLabel")).fill("e2e: miscounted");
     await page.locator('button[type="submit"]').click();

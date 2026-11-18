@@ -24,6 +24,8 @@ export const qk = {
   log: (id: string) => ["log", id] as const,
   workerTree: (id: string) => ["workerTree", id] as const,
   myLogs: ["myLogs"] as const,
+  managers: ["managers"] as const,
+  myLog: (id: string) => ["myLog", id] as const,
 };
 
 // --- Shared ---
@@ -204,4 +206,36 @@ export interface LogDetail {
 
 export function useLogDetail(logId: string) {
   return useQuery({ queryKey: qk.log(logId), queryFn: () => api<LogDetail>(`/api/manager/logs/${logId}`) });
+}
+
+// --- Owner: managers ---
+
+export interface ManagerRow { id: string; displayName: string; email: string | null; active: boolean }
+
+export function useManagers() {
+  return useQuery({
+    queryKey: qk.managers,
+    queryFn: () => api<{ managers: ManagerRow[] }>("/api/owner/managers").then((r) => r.managers),
+  });
+}
+
+// --- Worker: my records ---
+
+export type MyLogRow = import("@/types/database").DbTaskLog & { amendmentCount: number; voided: boolean };
+
+export function useMyLogs() {
+  return useQuery({
+    queryKey: qk.myLogs,
+    queryFn: () => api<{ logs: MyLogRow[] }>("/api/my-logs").then((r) => r.logs),
+    staleTime: 0, // a worker expects their just-submitted record to be there
+  });
+}
+
+/** One of the worker's records with its full trail (original + corrections + void). */
+export function useMyLogTrail(logId: string) {
+  return useQuery({
+    queryKey: qk.myLog(logId),
+    queryFn: () => api<{ rootLogId: string; trail: import("@/types/database").DbTaskLog[] }>(`/api/my-logs/${logId}`),
+    staleTime: 0,
+  });
 }

@@ -6,9 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { QrScanner } from "@/components/worker/QrScanner";
 import { WorkerHeader } from "@/components/worker/WorkerHeader";
-import { useLang } from "@/lib/i18n/LanguageContext";
-import { t } from "@/lib/i18n/t";
-import { dict } from "@/lib/i18n/dictionary";
+import { useT } from "@/lib/i18n/LanguageContext";
 import { errorMessage } from "@/lib/i18n/labels";
 
 const RECENT_KEY = "recent_trees";
@@ -26,14 +24,12 @@ function rememberTree(id: string) {
 
 export default function ScanPage() {
   const router = useRouter();
-  const { lang } = useLang();
+  const { lang, tr } = useT();
   const [manualId, setManualId] = useState("");
   const [checking, setChecking] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
   useEffect(() => setRecent(readRecent()), []);
-
-  const tr = (key: keyof typeof dict) => t(dict[key], lang);
 
   const navigateToTree = useCallback(
     async (qrValue: string, scannedAt: string) => {
@@ -55,7 +51,7 @@ export default function ScanPage() {
         sessionStorage.setItem("qr_value", qrValue);
         router.push(`/tree/${tree.tree_id}`);
       } catch {
-        toast.error(t(dict.err_network, lang));
+        toast.error(tr("err_network"));
         setChecking(false);
       }
     },
