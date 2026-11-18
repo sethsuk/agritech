@@ -1,13 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { loginAs } from "./helpers";
+import { loginAs, loginWith, th } from "./helpers";
 
 test("shows an error on invalid credentials and stays on /login", async ({ page }) => {
-  await page.goto("/login");
-  await page.locator('input[type="email"]').fill("worker1@farm.local");
-  await page.locator('input[type="password"]').fill("wrong-password");
-  await page.locator('button[type="submit"]').click();
-
-  await expect(page.getByText("อีเมลหรือรหัสผ่านไม่ถูกต้อง")).toBeVisible();
+  await loginWith(page, "worker1", "9999");
+  await expect(page.getByText(th("loginError"))).toBeVisible();
   await expect(page).toHaveURL(/\/login/);
 });
 
@@ -40,10 +36,15 @@ test("a worker visiting /dashboard is bounced to /scan", async ({ page }) => {
 test("logs out and returns to /login", async ({ page }) => {
   await loginAs(page, "manager");
 
-  await page.getByRole("button", { name: "ออกจากระบบ" }).click();
+  await page.getByRole("button", { name: th("logout") }).click();
   await expect(page).toHaveURL(/\/login/);
 
   // Session is really gone, not just client-side navigation.
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login/);
+});
+
+test("a worker can sign in with a bare username and 4-digit PIN", async ({ page }) => {
+  await loginWith(page, "worker1", "1111");
+  await expect(page).toHaveURL(/\/scan/);
 });

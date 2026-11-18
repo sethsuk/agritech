@@ -1,219 +1,138 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { t, taskDisplayName } from "@/lib/i18n/t";
+import { useT } from "@/lib/i18n/LanguageContext";
+import { errorMessage, formValueLabel } from "@/lib/i18n/labels";
+import { api, errorBody } from "@/lib/client/api";
+import { qk, useMyLogTrail, useTaskDefs } from "@/lib/client/queries";
+import { formatDateTime } from "@/lib/time";
 import { WorkerHeader } from "@/components/worker/WorkerHeader";
 import { TaskFormRenderer } from "@/components/worker/TaskFormRenderer";
-import { useLang } from "@/lib/i18n/LanguageContext";
-import { dict } from "@/lib/i18n/dictionary";
-import type { DbTaskLog, DbTaskDefinition } from "@/types/database";
+import { AuditTrail } from "@/components/worker/AuditTrail";
+import { ReasonField } from "@/components/worker/ReasonField";
+import { ErrorState } from "@/components/QueryState";
+import type { TaskField } from "@/types/database";
+
+/**
+ * Fields that identify which set a record belongs to can't be corrected (the server
+ * refuses with locked_field) — moving fruit between sets is a void-and-relog. They're
+ * shown read-only instead of as editable inputs.
+ */
+const isLockedField = (taskType: string, f: TaskField) =>
+  f.type === "set_picker" || (taskType === "bloom_log" && f.field_id === "color");
 
 type Mode = "view" | "correct" | "void";
 
 export default function MyLogDetailPage() {
   const { logId } = useParams<{ logId: string }>();
   const router = useRouter();
-  const { lang } = useLang();
+  const { lang, tr } = useT();
+  const queryClient = useQueryClient();
+  const trailQuery = useMyLogTrail(logId);
+  const defs = useTaskDefs();
 
-  const [trail, setTrail] = useState<DbTaskLog[] | null>(null);
-  const [taskDef, setTaskDef] = useState<DbTaskDefinition | null>(null);
-  const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<Mode>("view");
   const [editFormData, setEditFormData] = useState<Record<string, unknown>>({});
   const [reason, setReason] = useState("");
+  const [reasonError, setReasonError] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const tr = (key: keyof typeof dict) => t(dict[key], lang);
+  const back = () => (mode !== "view" ? setMode("view") : router.push("/my-logs"));
 
-  useEffect(() => {
-    Promise.all([
-      fetch(`/api/my-logs/${logId}`).then((r) => r.ok ? r.json() : Promise.reject()),
-      fetch("/api/task-definitions").then((r) => r.ok ? r.json() : Promise.reject()),
-    ])
-      .then(([logRes, defsRes]: [{ trail: DbTaskLog[] }, DbTaskDefinition[]]) => {
-        setTrail(logRes.trail);
-        const root = logRes.trail[0];
-        const def = defsRes.find((d) => d.task_def_id === root.task_def_id) ?? null;
-        setTaskDef(def);
-      })
-      .catch(() => {
-        toast.error(tr("myLogsLoadError"));
-        router.push("/my-logs");
-      })
-      .finally(() => setLoading(false));
-  }, [logId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (loading || !trail) {
+  if (trailQuery.isError) {
     return (
-      <main className="mx-auto max-w-md px-4 py-6">
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-lg bg-surface-alt" />
-          ))}
-        </div>
-      </main>
+      <div className="flex min-h-dvh flex-col">
+        <WorkerHeader variant="back" title={tr("myLogsTitle")} onBack={back} />
+        <main className="mx-auto w-full max-w-md px-4 py-6"><ErrorState error={trailQuery.error} onRetry={() => trailQuery.refetch()} /></main>
+      </div>
+    );
+  }
+  if (!trailQuery.data) {
+    return (
+      <div className="flex min-h-dvh flex-col">
+        <WorkerHeader variant="back" title="…" onBack={back} />
+        <main className="mx-auto w-full max-w-md px-4 py-6" aria-busy>
+          <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-20 animate-pulse rounded-lg bg-surface-alt" />)}</div>
+        </main>
+      </div>
     );
   }
 
+  const trail = trailQuery.data.trail;
   const root = trail[0];
-  const latest = trail[trail.length - 1];
-  const voided = trail.some((entry) => entry.correction_type === "void");
-  const currentFormData = voided
-    ? [...trail].reverse().find((e) => e.correction_type !== "void")?.form_data ?? root.form_data
-    : latest.form_data;
+  const taskDef = defs.data?.find((d) => d.task_def_id === root.task_def_id);
+  const voided = trail.some((e) => e.correction_type === "void");
+  const currentFormData = [...trail].reverse().find((e) => e.correction_type !== "void")?.form_data ?? root.form_data;
 
-  function entryLabel(entry: DbTaskLog) {
-    if (entry.correction_type === "void") return tr("voidLabel");
-    if (entry.correction_type === "correction") return tr("correctionLabel");
-    return tr("originalSubmissionLabel");
-  }
-
-  async function refreshTrail() {
-    const refreshed = await fetch(`/api/my-logs/${logId}`).then((r) => r.json());
-    setTrail(refreshed.trail);
-  }
-
-  function startCorrection() {
-    setEditFormData({ ...currentFormData });
+  function start(next: Mode) {
+    if (next === "correct") setEditFormData({ ...currentFormData });
     setReason("");
-    setMode("correct");
+    setReasonError(false);
+    setMode(next);
   }
 
-  function startVoid() {
-    setReason("");
-    setMode("void");
-  }
-
-  async function submitCorrection(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!reason.trim()) {
-      toast.error(tr("reasonRequiredError"));
+      setReasonError(true);
+      document.getElementById("reason")?.focus();
       return;
     }
     setSaving(true);
     try {
-      const res = await fetch(`/api/my-logs/${logId}/correct`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ formData: editFormData, reason }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        toast.error(data?.error === "log_already_voided" ? tr("alreadyVoidedError") : tr("correctionFailedToast"));
-        return;
+      if (mode === "correct") {
+        await api(`/api/my-logs/${logId}/correct`, { method: "POST", json: { formData: editFormData, reason } });
+        toast.success(tr("correctionSuccessToast"));
+      } else {
+        await api(`/api/my-logs/${logId}/void`, { method: "POST", json: { reason } });
+        toast.success(tr("voidSuccessToast"));
       }
-      toast.success(tr("correctionSuccessToast"));
-      await refreshTrail();
+      // Corrections/voids change this record, the records list and the tree's set counts.
+      queryClient.invalidateQueries({ queryKey: qk.myLog(logId) });
+      queryClient.invalidateQueries({ queryKey: qk.myLogs });
+      queryClient.invalidateQueries({ queryKey: qk.workerTree(root.tree_id) });
       setMode("view");
-    } catch {
-      toast.error(tr("correctionFailedToast"));
+    } catch (err) {
+      toast.error(errorMessage(errorBody(err), lang, { fields: taskDef?.fields }), { duration: 6000 });
     } finally {
       setSaving(false);
     }
   }
 
-  async function submitVoid(e: React.FormEvent) {
-    e.preventDefault();
-    if (!reason.trim()) {
-      toast.error(tr("reasonRequiredError"));
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/my-logs/${logId}/void`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        toast.error(data?.error === "log_already_voided" ? tr("alreadyVoidedError") : tr("voidFailedToast"));
-        return;
-      }
-      toast.success(tr("voidSuccessToast"));
-      await refreshTrail();
-      setMode("view");
-    } catch {
-      toast.error(tr("voidFailedToast"));
-    } finally {
-      setSaving(false);
-    }
-  }
+  const reasonProps = {
+    value: reason,
+    onChange: (v: string) => { setReason(v); if (v.trim()) setReasonError(false); },
+    error: reasonError ? tr("reasonRequiredError") : undefined,
+  };
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <WorkerHeader
-        variant="back"
-        title={taskDef ? taskDisplayName(taskDef, lang) : root.task_type}
-        onBack={() => (mode !== "view" ? setMode("view") : router.push("/my-logs"))}
-      />
+      <WorkerHeader variant="back" title={taskDef ? taskDisplayName(taskDef, lang) : "—"} onBack={back} hideLogout={mode !== "view"} />
 
       <main className="mx-auto w-full max-w-md flex-1 px-4 py-6 pb-32">
         {mode === "view" && (
           <>
-            <div className="mb-4 rounded-lg border border-line bg-surface p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-lg font-bold text-ink">{root.tree_id}</p>
-                  <p className="text-base text-muted">{new Date(root.submitted_at).toLocaleString("th-TH")}</p>
-                </div>
-                {voided && (
-                  <span className="rounded-full bg-warning-tint px-3 py-1 text-base font-semibold text-warning-ink">
-                    {tr("voidedBadge")}
-                  </span>
-                )}
+            <div className="mb-4 flex items-start justify-between rounded-lg border border-line bg-surface p-4">
+              <div>
+                <p className="text-lg font-bold text-ink">{root.tree_id}</p>
+                <p className="text-base text-muted">{formatDateTime(root.submitted_at, lang)}</p>
               </div>
+              {voided && <span className="rounded-full bg-warning-tint px-3 py-1 text-base font-semibold text-warning-ink">{tr("voidedBadge")}</span>}
             </div>
 
             <h2 className="mb-3 text-base font-semibold text-body">{tr("auditTrailTitle")}</h2>
-            <div className="mb-6 space-y-3">
-              {trail.map((entry) => (
-                <div key={entry.log_id} className="rounded-lg border border-line bg-surface p-4">
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-base font-semibold ${
-                        entry.correction_type === "void"
-                          ? "text-warning-ink"
-                          : entry.correction_type === "correction"
-                          ? "text-caution-ink"
-                          : "text-primary-ink"
-                      }`}
-                    >
-                      {entryLabel(entry)}
-                    </span>
-                    <span className="text-base text-muted">{new Date(entry.submitted_at).toLocaleString("th-TH")}</span>
-                  </div>
-                  {entry.correction_reason && (
-                    <p className="mt-2 text-base text-body">{entry.correction_reason}</p>
-                  )}
-                  {entry.correction_type !== "void" && (
-                    <dl className="mt-2 space-y-1">
-                      {Object.entries(entry.form_data).map(([k, v]) => (
-                        <div key={k} className="flex justify-between text-base">
-                          <dt className="text-muted">{k}</dt>
-                          <dd className="text-body">{typeof v === "object" ? JSON.stringify(v) : String(v)}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  )}
-                </div>
-              ))}
-            </div>
+            <div className="mb-6"><AuditTrail trail={trail} taskDef={taskDef} /></div>
 
             {!voided && taskDef && (
               <div className="space-y-3">
-                <button
-                  onClick={startCorrection}
-                  className="h-15 w-full rounded-lg border-2 border-primary text-lg font-semibold text-primary-ink active:bg-primary-tint"
-                >
+                <button type="button" onClick={() => start("correct")} className="h-15 w-full rounded-lg border-2 border-primary text-lg font-semibold text-primary-ink active:bg-primary-tint">
                   {tr("correctButton")}
                 </button>
-                <button
-                  onClick={startVoid}
-                  className="h-15 w-full rounded-lg border-2 border-warning text-lg font-semibold text-warning-ink active:bg-warning-tint"
-                >
+                <button type="button" onClick={() => start("void")} className="h-15 w-full rounded-lg border-2 border-warning text-lg font-semibold text-warning-ink active:bg-warning-tint">
                   {tr("voidButton")}
                 </button>
               </div>
@@ -222,69 +141,51 @@ export default function MyLogDetailPage() {
         )}
 
         {mode === "correct" && taskDef && (
-          <form onSubmit={submitCorrection} className="space-y-4">
+          <form onSubmit={submit} noValidate className="space-y-4">
+            {taskDef.fields.filter((f) => isLockedField(root.task_type, f)).map((f) => (
+              <div key={f.field_id} className="rounded-lg border border-line bg-surface-alt p-4 text-base text-muted">
+                🔒 {t(f.label, lang)}{f.type !== "set_picker" && `: ${formValueLabel(f, editFormData[f.field_id], lang)}`}
+              </div>
+            ))}
             <TaskFormRenderer
-              fields={taskDef.fields}
+              fields={taskDef.fields.filter((f) => !isLockedField(root.task_type, f))}
               formData={editFormData}
               onChange={(field, value) => setEditFormData((prev) => ({ ...prev, [field]: value }))}
             />
-
-            <div className="rounded-lg border border-line bg-surface p-4">
-              <label className="mb-2 block text-lg font-semibold text-body">{tr("correctReasonLabel")}</label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder={tr("correctReasonPlaceholder")}
-                rows={3}
-                className="w-full rounded-lg border border-line px-3 py-2 text-base focus:border-primary focus:outline-none"
-              />
-            </div>
-
-            <div className="fixed inset-x-0 bottom-0 border-t border-line bg-surface p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
-              <div className="mx-auto max-w-md">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="h-15 w-full rounded-lg bg-primary text-lg font-semibold text-white active:bg-primary-press disabled:bg-surface-press"
-                >
-                  {saving ? tr("submitting") : tr("saveCorrectionButton")}
-                </button>
-              </div>
-            </div>
+            <ReasonField label={tr("correctReasonLabel")} placeholder={tr("correctReasonPlaceholder")} {...reasonProps} />
+            <StickySubmit label={saving ? tr("submitting") : tr("saveCorrectionButton")} disabled={saving} />
           </form>
         )}
 
         {mode === "void" && (
-          <form onSubmit={submitVoid} className="space-y-4">
-            <div className="rounded-lg border border-line bg-surface p-4">
-              <p className="text-base text-body">{tr("voidConfirmMessage")}</p>
+          <form onSubmit={submit} noValidate className="space-y-4">
+            <div className="rounded-lg border border-warning bg-warning-tint p-4">
+              <p className="text-lg font-semibold text-warning-ink">{tr("voidConfirmTitle")}</p>
+              <p className="mt-1 text-base text-body">{tr("voidConfirmMessage")}</p>
             </div>
-
-            <div className="rounded-lg border border-line bg-surface p-4">
-              <label className="mb-2 block text-lg font-semibold text-body">{tr("voidReasonLabel")}</label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder={tr("voidReasonPlaceholder")}
-                rows={3}
-                className="w-full rounded-lg border border-line px-3 py-2 text-base focus:border-primary focus:outline-none"
-              />
-            </div>
-
-            <div className="fixed inset-x-0 bottom-0 border-t border-line bg-surface p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
-              <div className="mx-auto max-w-md">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="h-15 w-full rounded-lg bg-warning text-lg font-semibold text-white active:bg-warning-press disabled:bg-surface-press"
-                >
-                  {saving ? tr("submitting") : tr("voidButton")}
-                </button>
-              </div>
-            </div>
+            <ReasonField label={tr("voidReasonLabel")} placeholder={tr("voidReasonPlaceholder")} {...reasonProps} />
+            <StickySubmit label={saving ? tr("submitting") : tr("voidButton")} disabled={saving} destructive />
           </form>
         )}
       </main>
+    </div>
+  );
+}
+
+function StickySubmit({ label, disabled, destructive }: { label: string; disabled: boolean; destructive?: boolean }) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 border-t border-line bg-surface p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
+      <div className="mx-auto max-w-md">
+        <button
+          type="submit"
+          disabled={disabled}
+          className={`h-15 w-full rounded-lg text-lg font-semibold text-white disabled:bg-surface-press ${
+            destructive ? "bg-warning active:bg-warning-press" : "bg-primary active:bg-primary-press"
+          }`}
+        >
+          {label}
+        </button>
+      </div>
     </div>
   );
 }

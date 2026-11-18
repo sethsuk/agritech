@@ -1,24 +1,10 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getSession, isStaff } from "@/lib/auth/gate";
 
 // Root: redirect to the right dashboard based on auth + role.
 export default async function RootPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const me = await getSession();
+  if (!me) redirect("/login");
 
-  if (!user) redirect("/login");
-
-  const admin = createAdminClient();
-  const { data: profile } = await admin
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profile?.role === "manager" || profile?.role === "owner") {
-    redirect("/dashboard");
-  }
-
-  redirect("/scan");
+  redirect(isStaff(me.role) ? "/dashboard" : "/scan");
 }

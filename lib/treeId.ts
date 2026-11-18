@@ -30,3 +30,17 @@ export function isValidTreeId(treeId: string): boolean {
 export function qrCodeForTreeId(treeId: string): string {
   return `QR_${treeId}_v1`;
 }
+
+// --- Zone keys: a zone letter + side, e.g. "AL". The one parser for zone filters, so
+// a new zone (B, C…) shows up everywhere as soon as its first tree exists. ---
+
+const ZONE_KEY_PATTERN = /^([A-Z])(L|R)$/;
+
+export function zoneKey(zone: string, side: string): string {
+  return `${zone}${side}`;
+}
+
+export function parseZoneKey(key: string | null | undefined): { zone: string; side: "L" | "R" } | null {
+  const m = key ? ZONE_KEY_PATTERN.exec(key) : null;
+  return m ? { zone: m[1], side: m[2] as "L" | "R" } : null;
+}

@@ -1,309 +1,283 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useMemo } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
-import { t } from "@/lib/i18n/t";
-import { useLang } from "@/lib/i18n/LanguageContext";
-import { dict, type DictKey } from "@/lib/i18n/dictionary";
-import type { DbAlert, DbTaskLog } from "@/types/database";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useT } from "@/lib/i18n/LanguageContext";
+import { alertSubtypeLabel, colorName, COLOR_ICON, flagLabel, taskLabel } from "@/lib/i18n/labels";
+import { useOverview, useTaskDefs, type Overview } from "@/lib/client/queries";
+import { parseZoneKey, zoneKey } from "@/lib/treeId";
+import { daysSince, formatDate, formatDateTime, RANGE_KEYS, type RangeKey } from "@/lib/time";
+import { ALERT_CATEGORY_ICON, ALERT_TIER, chipClass, validationBadgeClass } from "@/lib/ui/badges";
+import { InfoTip } from "@/components/InfoTip";
+import { ErrorState, RefreshBar } from "@/components/QueryState";
+import type { DictKey } from "@/lib/i18n/dictionary";
 
-type RangeKey = "today" | "week" | "month" | "year" | "all";
-
-interface OverviewData {
-  zones: string[];
-  range: RangeKey;
-  openAlertsCount: number;
-  tier1AlertsCount: number;
-  logsInRangeCount: number;
-  fruitTotalInRange: number;
-  fruitByGrade: Record<string, number>;
-  recentAlerts: (DbAlert & { trees?: { tree_id: string; zone: string }; workers?: { users: { display_name: string } } })[];
-  recentLogs: Pick<DbTaskLog, "log_id" | "tree_id" | "task_type" | "worker_id" | "submitted_at" | "validation_status" | "validation_flags">[];
-  staleTreesCount: number;
-  staleTrees: { treeId: string; zone: string; side: string; daysSinceLastLog: number | null }[];
-  overdueSetsCount: number;
-  overdueSets: { setId: string; treeId: string; color: string; daysOverdue: number }[];
-}
-
-// Must stay in sync with tierBadge in app/(manager)/alerts/page.tsx — the same
-// alert should not read as urgent in one place and mild in another.
-const tierMeta: Record<string, { key: DictKey; color: string }> = {
-  tier_1: { key: "alertTierUrgent", color: "bg-warning text-white" },
-  tier_2: { key: "alertTierModerate", color: "bg-caution text-white" },
-  tier_3: { key: "alertTierInfo", color: "bg-surface-alt text-body border border-line" },
+const RANGE_LABEL: Record<RangeKey, DictKey> = {
+  today: "rangeToday", week: "rangeWeek", month: "rangeMonth", year: "rangeYear", all: "rangeAll",
 };
-
-const categoryIcon: Record<string, string> = {
-  farm_health: "🌿",
-  fraud_signal: "⚠️",
-  inactivity: "😴",
-  compliance: "📋",
-};
-
-const RANGES: { value: RangeKey; key: DictKey }[] = [
-  { value: "today", key: "rangeToday" },
-  { value: "week", key: "rangeWeek" },
-  { value: "month", key: "rangeMonth" },
-  { value: "year", key: "rangeYear" },
-  { value: "all", key: "rangeAll" },
-];
-
 const GRADE_ORDER = ["A", "B", "C", "reject"];
 
-export default function ManagerDashboard() {
-  const { lang } = useLang();
-  const [data, setData] = useState<OverviewData | null>(null);
-  const [zone, setZone] = useState<string | null>(null);
-  const [range, setRange] = useState<RangeKey>("week");
+export default function DashboardPage() {
+  return (
+    <Suspense>
+      <Dashboard />
+    </Suspense>
+  );
+}
 
-  const tr = (key: DictKey) => t(dict[key], lang);
+/**
+ * Manager overview. The whole snapshot is fetched ONCE (one DB round trip) and cached;
+ * zone and range filters are pure client-side selection over pre-grouped numbers, so
+ * switching them is instant. Filters live in the URL so Back returns to the same view.
+ */
+function Dashboard() {
+  const { lang, tr } = useT();
+  const router = useRouter();
+  const params = useSearchParams();
+  const overview = useOverview();
+  const taskDefs = useTaskDefs();
 
-  useEffect(() => {
-    const qs = new URLSearchParams({ range });
-    if (zone) qs.set("zone", zone);
-    fetch(`/api/manager/overview?${qs}`)
-      .then((r) => r.ok ? r.json() : Promise.reject())
-      .then(setData)
-      .catch(() => toast.error(tr("loadOverviewError")));
-  }, [zone, range]); // eslint-disable-line react-hooks/exhaustive-deps
+  const zone = parseZoneKey(params.get("zone")) ? params.get("zone")! : null;
+  const range: RangeKey = (RANGE_KEYS as string[]).includes(params.get("range") ?? "")
+    ? (params.get("range") as RangeKey)
+    : "week";
 
-  const statCards: { label: string; value: number; color: string; href: string | null }[] = data
-    ? [
-        { label: tr("statOpenAlerts"), value: data.openAlertsCount, color: "text-warning-ink", href: "/alerts" },
-        { label: tr("statUrgentAlerts"), value: data.tier1AlertsCount, color: "text-caution-ink", href: "/alerts" },
-        { label: tr("statLogsLabel"), value: data.logsInRangeCount, color: "text-primary-ink", href: null },
-        { label: tr("statFruitHarvested"), value: data.fruitTotalInRange, color: "text-status-ink", href: null },
-        { label: tr("statStaleTrees"), value: data.staleTreesCount, color: "text-caution-ink", href: "/trees" },
-        { label: tr("statOverdueSets"), value: data.overdueSetsCount, color: "text-warning-ink", href: "/trees" },
-      ]
-    : [];
+  const setFilter = (next: { zone?: string | null; range?: RangeKey }) => {
+    const qs = new URLSearchParams(params);
+    if (next.zone) qs.set("zone", next.zone);
+    else if (next.zone === null) qs.delete("zone");
+    if (next.range) qs.set("range", next.range);
+    router.replace(`/dashboard?${qs}`, { scroll: false });
+  };
 
-  const gradeEntries = data
-    ? Object.entries(data.fruitByGrade).sort(
-        (a, b) => GRADE_ORDER.indexOf(a[0]) - GRADE_ORDER.indexOf(b[0])
-      )
-    : [];
+  const view = useMemo(() => (overview.data ? select(overview.data, zone, range) : null), [overview.data, zone, range]);
+
+  // Query string the tiles carry to the Logs page, so it opens on the same slice.
+  const sliceQs = new URLSearchParams({ range, ...(zone ? { zone } : {}) }).toString();
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
-      <h1 className="mb-4 text-2xl font-bold text-ink">{tr("dashboardTitle")}</h1>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold text-ink">{tr("dashboardTitle")}</h1>
+        <RefreshBar
+          updatedAt={overview.dataUpdatedAt || undefined}
+          fetching={overview.isFetching}
+          onRefresh={() => overview.refetch()}
+        />
+      </div>
 
       {/* Filters */}
       <div className="mb-6 space-y-2">
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setZone(null)}
-            className={`inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-semibold sm:min-h-0 sm:py-1.5 ${
-              zone === null ? "bg-primary text-white" : "bg-surface text-body border border-line"
-            }`}
-          >
+        <div className="flex flex-wrap gap-2" role="group" aria-label={tr("zoneLabel")}>
+          <button type="button" aria-pressed={zone === null} onClick={() => setFilter({ zone: null })} className={chipClass(zone === null)}>
             {tr("filterZoneAll")}
           </button>
-          {data?.zones.map((z) => (
-            <button
-              key={z}
-              onClick={() => setZone(z)}
-              className={`inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-semibold sm:min-h-0 sm:py-1.5 ${
-                zone === z ? "bg-primary text-white" : "bg-surface text-body border border-line"
-              }`}
-            >
-              {z}
-            </button>
-          ))}
+          {overview.data?.zones.map((z) => {
+            const key = zoneKey(z.zone, z.side);
+            return (
+              <button key={key} type="button" aria-pressed={zone === key} onClick={() => setFilter({ zone: key })} className={chipClass(zone === key)}>
+                {key}
+              </button>
+            );
+          })}
         </div>
-        <div className="flex flex-wrap gap-2 rounded-lg bg-surface-alt p-1 sm:inline-flex sm:w-auto">
-          {RANGES.map((r) => (
-            <button
-              key={r.value}
-              onClick={() => setRange(r.value)}
-              className={`inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold transition sm:min-h-0 sm:py-1.5 ${
-                range === r.value ? "bg-surface text-ink border border-line" : "text-muted"
-              }`}
-            >
-              {tr(r.key)}
+        <div className="flex flex-wrap gap-2" role="group" aria-label={tr("filterRange")}>
+          {RANGE_KEYS.map((r) => (
+            <button key={r} type="button" aria-pressed={range === r} onClick={() => setFilter({ range: r })} className={chipClass(range === r)}>
+              {tr(RANGE_LABEL[r])}
             </button>
           ))}
         </div>
       </div>
+
+      {overview.isError && !overview.data && (
+        <ErrorState error={overview.error} onRetry={() => overview.refetch()} />
+      )}
 
       {/* Stat tiles */}
-      <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {data === null
-          ? Array.from({ length: 6 }).map((_, i) => (
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {!view
+          ? !overview.isError && Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="h-24 animate-pulse rounded-lg bg-surface-alt" />
             ))
-          : statCards.map(({ label, value, color, href }) => {
-              const inner = (
-                <div className="rounded-lg bg-surface p-4 border border-line">
-                  <p className="text-xs text-muted">{label}</p>
+          : [
+              { label: tr("statOpenAlerts"), help: tr("help_openAlerts"), value: view.openAlerts, color: "text-caution-ink", href: "/alerts" },
+              { label: tr("statUrgentAlerts"), help: tr("help_urgentAlerts"), value: view.urgentAlerts, color: "text-warning-ink", href: "/alerts?tier=tier_1" },
+              { label: tr("statLogsLabel"), help: tr("help_logs"), value: view.logs, color: "text-primary-ink", href: `/logs?${sliceQs}` },
+              { label: tr("statFruitHarvested"), help: tr("help_fruit"), value: view.fruitTotal, color: "text-status-ink", href: `/logs?${sliceQs}&task=harvest` },
+              {
+                label: tr("statStaleTrees", { n: overview.data!.staleDays }),
+                help: tr("help_staleTrees", { n: overview.data!.staleDays }),
+                value: view.staleCount, color: "text-caution-ink",
+                href: `/trees?stale=1${zone ? `&zone=${zone}` : ""}`,
+              },
+              { label: tr("statOverdueSets"), help: tr("help_overdueSets"), value: view.overdueSets.length, color: "text-warning-ink", href: "#overdue-sets" },
+            ].map(({ label, help, value, color, href }) => (
+              <div key={label} className="relative rounded-lg border border-line bg-surface">
+                <Link href={href} className="block h-full rounded-lg p-4 pr-10 active:bg-surface-alt">
+                  <p className="text-xs leading-snug text-muted">{label}</p>
                   <p className={`mt-1 text-3xl font-bold ${color}`}>{value}</p>
-                </div>
-              );
-              return href ? (
-                <Link key={label} href={href}>{inner}</Link>
-              ) : (
-                <div key={label}>{inner}</div>
-              );
-            })}
+                </Link>
+                <span className="absolute right-2 top-2">
+                  <InfoTip text={help} label={label} />
+                </span>
+              </div>
+            ))}
       </div>
 
-      {/* Fruit-by-grade breakdown */}
-      {data !== null && data.fruitTotalInRange > 0 && (
-        <div className="mb-8 flex flex-wrap gap-2">
-          {gradeEntries.map(([grade, count]) => (
-            <span key={grade} className="rounded-full bg-surface px-3 py-1.5 text-xs font-semibold text-body border border-line">
+      {view && view.fruitTotal > 0 && (
+        <div className="mb-8 flex flex-wrap gap-2" aria-label={tr("gradeSummaryTitle")}>
+          {view.fruitByGrade.map(([grade, count]) => (
+            <span key={grade} className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-body">
               {grade === "reject" ? tr("gradeLabelReject") : grade}: {count} {tr("fruitCountUnit")}
             </span>
           ))}
         </div>
       )}
-      {data === null && <div className="mb-8 h-8" />}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Stale trees */}
-        <section>
-          <h2 className="mb-3 font-semibold text-ink">{tr("staleTreesTitle")}</h2>
-          <div className="space-y-2">
-            {data === null && (
-              <div className="h-32 animate-pulse rounded-lg bg-surface-alt" />
-            )}
-            {data?.staleTrees.length === 0 && (
-              <div className="rounded-lg bg-surface p-6 text-center text-sm text-muted border border-line">
-                {tr("noStaleTrees")}
-              </div>
-            )}
-            {data?.staleTrees.map((tree) => (
-              <Link
-                key={tree.treeId}
-                href={`/trees/${tree.treeId}`}
-                className="flex items-center justify-between rounded-lg bg-surface px-4 py-3 border border-line active:bg-surface-alt"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-ink">{tree.treeId}</p>
-                  <p className="text-xs text-muted">{tree.zone}{tree.side}</p>
-                </div>
-                <span className="rounded-full bg-caution-tint px-2 py-0.5 text-xs font-semibold text-caution-ink">
-                  {tree.daysSinceLastLog !== null ? `${tree.daysSinceLastLog} ${tr("daysAgoSuffix")}` : tr("neverLoggedYet")}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        {/* Overdue sets */}
-        <section>
-          <h2 className="mb-3 font-semibold text-ink">{tr("overdueSetsTitle")}</h2>
-          <div className="space-y-2">
-            {data === null && (
-              <div className="h-32 animate-pulse rounded-lg bg-surface-alt" />
-            )}
-            {data?.overdueSets.length === 0 && (
-              <div className="rounded-lg bg-surface p-6 text-center text-sm text-muted border border-line">
-                {tr("noOverdueSets")}
-              </div>
-            )}
-            {data?.overdueSets.map((set) => (
-              <Link
-                key={set.setId}
-                href={`/trees/${set.treeId}`}
-                className="flex items-center justify-between rounded-lg bg-surface px-4 py-3 border border-line active:bg-surface-alt"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-ink">{set.treeId}</p>
-                  <p className="text-xs text-muted">{set.color}</p>
-                </div>
-                <span className="rounded-full bg-warning-tint px-2 py-0.5 text-xs font-semibold text-warning-ink">
-                  {set.daysOverdue} {tr("overdueByDaysSuffix")}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        {/* Recent alerts */}
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold text-ink">{tr("recentAlertsTitle")}</h2>
-            <Link href="/alerts" className="inline-flex min-h-11 items-center text-sm text-primary-ink hover:underline sm:min-h-0">
-              {tr("viewAll")} →
-            </Link>
-          </div>
-          <div className="space-y-2">
-            {data === null && (
-              <div className="h-32 animate-pulse rounded-lg bg-surface-alt" />
-            )}
-            {data?.recentAlerts.length === 0 && (
-              <div className="rounded-lg bg-surface p-6 text-center text-sm text-muted border border-line">
-                {tr("noOpenAlerts")}
-              </div>
-            )}
-            {data?.recentAlerts.map((alert) => {
-              const meta = tierMeta[alert.tier] ?? { key: null, color: "bg-surface-alt text-body" };
-              const tierText = meta.key ? tr(meta.key) : alert.tier;
+      {view && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Section title={tr("staleTreesTitle", { n: overview.data!.staleDays })} empty={tr("noStaleTrees")} count={view.staleTrees.length}>
+            {view.staleTrees.map((tree) => {
+              const days = daysSince(tree.last_log_at);
               return (
-                <div
-                  key={alert.alert_id}
-                  className="flex items-center gap-3 rounded-lg bg-surface px-4 py-3 border border-line"
-                >
-                  <span className="text-xl">{categoryIcon[alert.category] ?? "📌"}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink">
-                      {alert.subtype.replace(/_/g, " ")}
-                      {alert.tree_id && ` · ${alert.tree_id}`}
-                    </p>
-                    <p className="text-xs text-muted">
-                      {new Date(alert.created_at).toLocaleString("th-TH")}
-                    </p>
-                  </div>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.color}`}>
-                    {tierText}
+                <Row key={tree.tree_id} href={`/trees/${tree.tree_id}`} title={tree.tree_id} subtitle={zoneKey(tree.zone, tree.side)}>
+                  <span className="rounded-full bg-caution-tint px-2 py-0.5 text-xs font-semibold text-caution-ink">
+                    {days !== null ? `${days} ${tr("daysAgoSuffix")}` : tr("neverLoggedYet")}
                   </span>
-                </div>
+                </Row>
               );
             })}
-          </div>
-        </section>
+          </Section>
 
-        {/* Recent logs */}
-        <section>
-          <h2 className="mb-3 font-semibold text-ink">{tr("recentLogsTitle")}</h2>
-          <div className="space-y-2">
-            {data === null && (
-              <div className="h-32 animate-pulse rounded-lg bg-surface-alt" />
-            )}
-            {data?.recentLogs.length === 0 && (
-              <div className="rounded-lg bg-surface p-6 text-center text-sm text-muted border border-line">
-                {tr("noLogsYet")}
-              </div>
-            )}
-            {data?.recentLogs.map((log) => (
-              <div
-                key={log.log_id}
-                className="flex items-center gap-3 rounded-lg bg-surface px-4 py-3 border border-line"
+          <Section id="overdue-sets" title={tr("overdueSetsTitle")} empty={tr("noOverdueSets")} count={view.overdueSets.length}>
+            {view.overdueSets.map((set) => (
+              <Row
+                key={set.set_id}
+                href={`/trees/${set.tree_id}`}
+                title={`${set.tree_id} · ${COLOR_ICON[set.color] ?? ""} ${colorName(set.color, lang)}`}
+                subtitle={`${tr("setRemaining", { n: Math.max(set.remaining, 0) })} · ${formatDate(set.harvest_window_end, lang)}`}
               >
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-semibold text-ink">
-                    {log.tree_id} · {log.task_type}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {new Date(log.submitted_at).toLocaleString("th-TH")}
-                  </p>
-                </div>
-                {log.validation_status !== "passed" && (
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    log.validation_status === "flagged"
-                      ? "bg-caution-tint text-caution-ink"
-                      : "bg-warning-tint text-warning-ink"
-                  }`}>
-                    {log.validation_flags?.[0] ?? log.validation_status}
+                <span className="rounded-full bg-warning-tint px-2 py-0.5 text-xs font-semibold text-warning-ink">
+                  {daysSince(`${set.harvest_window_end}T23:59:59+07:00`) ?? 0} {tr("overdueByDaysSuffix")}
+                </span>
+              </Row>
+            ))}
+          </Section>
+
+          <Section
+            title={tr("recentAlertsTitle")}
+            empty={tr("noOpenAlerts")}
+            count={view.recentAlerts.length}
+            action={<Link href="/alerts" className="inline-flex min-h-11 items-center text-sm text-primary-ink hover:underline sm:min-h-0">{tr("viewAll")} →</Link>}
+          >
+            {view.recentAlerts.map((alert) => {
+              const tier = ALERT_TIER[alert.tier];
+              return (
+                <Row
+                  key={alert.alert_id}
+                  href="/alerts"
+                  icon={ALERT_CATEGORY_ICON[alert.category] ?? "📌"}
+                  title={`${alertSubtypeLabel(alert.subtype, lang)}${alert.tree_id ? ` · ${alert.tree_id}` : ""}`}
+                  subtitle={formatDateTime(alert.created_at, lang)}
+                >
+                  {tier && <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${tier.className}`}>{tr(tier.key)}</span>}
+                </Row>
+              );
+            })}
+          </Section>
+
+          <Section
+            title={tr("recentLogsTitle")}
+            empty={tr("noLogsYet")}
+            count={view.recentLogs.length}
+            action={<Link href={`/logs?${sliceQs}`} className="inline-flex min-h-11 items-center text-sm text-primary-ink hover:underline sm:min-h-0">{tr("viewAll")} →</Link>}
+          >
+            {view.recentLogs.map((log) => (
+              <Row
+                key={log.log_id}
+                href={`/logs/${log.log_id}`}
+                title={`${log.tree_id} · ${taskLabel(log.task_def_id, taskDefs.data, lang)}`}
+                subtitle={`${formatDateTime(log.submitted_at, lang)}${log.worker_name ? ` · ${log.worker_name}` : ""}`}
+              >
+                {log.validation_status === "flagged" && (
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${validationBadgeClass("flagged")}`}>
+                    {log.validation_flags[0] ? flagLabel(log.validation_flags[0], lang) : tr("validationFlagged")}
                   </span>
                 )}
-              </div>
+              </Row>
             ))}
-          </div>
-        </section>
-      </div>
+          </Section>
+        </div>
+      )}
     </div>
+  );
+}
+
+/** Narrow the pre-grouped snapshot to one zone (or all) and one range. Pure. */
+function select(o: Overview, zone: string | null, range: RangeKey) {
+  const z = parseZoneKey(zone);
+  const inZone = (r: { zone: string | null; side: string | null }) => !z || (r.zone === z.zone && r.side === z.side);
+
+  const logs = o.logCounts.filter(inZone).reduce((n, r) => n + Number(r[range]), 0);
+
+  const grades = new Map<string, number>();
+  for (const f of o.fruit.filter(inZone)) grades.set(f.grade, (grades.get(f.grade) ?? 0) + Number(f[range]));
+  const fruitByGrade = [...grades.entries()]
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => GRADE_ORDER.indexOf(a[0]) - GRADE_ORDER.indexOf(b[0]));
+
+  const alerts = o.alerts.filter((a) => !z || inZone(a));
+  // Compare as instants, not strings: Postgres and JS serialise timestamps differently.
+  const since = range === "all" ? null : Date.parse(o.bounds[range]);
+
+  return {
+    logs,
+    fruitByGrade,
+    fruitTotal: fruitByGrade.reduce((n, [, c]) => n + c, 0),
+    openAlerts: alerts.length,
+    urgentAlerts: alerts.filter((a) => a.tier === "tier_1").length,
+    recentAlerts: alerts.slice(0, 10),
+    staleCount: o.staleCounts.filter(inZone).reduce((n, r) => n + Number(r.count), 0),
+    staleTrees: o.staleTrees.filter(inZone).slice(0, 20),
+    overdueSets: o.overdueSets.filter(inZone),
+    recentLogs: o.recentLogs
+      .filter(inZone)
+      .filter((l) => since === null || Date.parse(l.submitted_at) >= since)
+      .slice(0, 20),
+  };
+}
+
+function Section({
+  id, title, empty, count, action, children,
+}: { id?: string; title: string; empty: string; count: number; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section id={id} className="scroll-mt-20">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 className="font-semibold text-ink">{title}</h2>
+        {action}
+      </div>
+      <div className="space-y-2">
+        {count === 0 ? (
+          <div className="rounded-lg border border-line bg-surface p-6 text-center text-sm text-muted">{empty}</div>
+        ) : children}
+      </div>
+    </section>
+  );
+}
+
+function Row({
+  href, title, subtitle, icon, children,
+}: { href: string; title: string; subtitle?: string; icon?: string; children?: React.ReactNode }) {
+  return (
+    <Link href={href} className="flex min-h-14 items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3 active:bg-surface-alt">
+      {icon && <span aria-hidden className="text-xl">{icon}</span>}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-ink">{title}</p>
+        {subtitle && <p className="truncate text-xs text-muted">{subtitle}</p>}
+      </div>
+      {children}
+    </Link>
   );
 }

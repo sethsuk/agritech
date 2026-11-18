@@ -1,174 +1,29 @@
 import { NextResponse } from "next/server";
-import { requireStaff } from "@/lib/auth/requireStaff";
+import { requireStaff } from "@/lib/auth/gate";
 
 /**
- * GET /api/manager/overview?zone=AL&range=week
+ * GET /api/manager/overview
  *
- * Aggregated data for the manager dashboard home screen. Both params optional.
- * zone: a zone+side combo like "AL" (omit for all zones).
- * range: "today" | "week" | "month" | "year" | "all" (default "week").
- * Requires manager or owner role.
+ * The whole dashboard in ONE database round trip (the dashboard_snapshot RPC): log
+ * counts and fruit-by-grade pre-grouped by every (zone, side) × every Bangkok calendar
+ * range, plus open alerts, stale trees, overdue sets and recent logs. The client picks
+ * the zone/range locally — switching filters makes no further requests.
+ *
+ * It replaces a route that re-ran ~9 queries over ~5 sequential round trips on every
+ * filter click and summed fruit in JS (silently capped at 1000 rows).
  */
 
-const RANGES = ["today", "week", "month", "year", "all"] as const;
-type Range = (typeof RANGES)[number];
-
-// Days without a log before a tree is surfaced as "stale". Deployment config, not DB
-// data — same convention as the PHOTO_AUDIT_RATE_* env vars.
+// Days without a log before a tree counts as "not checked recently". Deployment config.
 const STALE_TREE_DAYS = Number(process.env.STALE_TREE_DAYS ?? "3");
 
-function rangeStart(range: Range): Date | null {
-  const now = new Date();
-  if (range === "today") {
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
-    return start;
-  }
-  if (range === "all") return null;
-  const days = { week: 7, month: 30, year: 365 }[range];
-  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-}
-
-export async function GET(request: Request) {
+export async function GET() {
   const gate = await requireStaff();
   if (!gate.ok) return gate.response;
-  const { admin } = gate;
 
-  const { searchParams } = new URL(request.url);
-  const rangeParam = searchParams.get("range") ?? "week";
-  const range: Range = (RANGES as readonly string[]).includes(rangeParam) ? (rangeParam as Range) : "week";
-
-  const zoneParam = searchParams.get("zone");
-  const zoneChar = zoneParam && zoneParam.length >= 2 ? zoneParam.slice(0, 1) : null;
-  const sideChar = zoneParam && zoneParam.length >= 2 ? zoneParam.slice(1) : null;
-  const zoneFilter: { zone: string; side: "L" | "R" } | null =
-    zoneChar && (sideChar === "L" || sideChar === "R") ? { zone: zoneChar, side: sideChar } : null;
-
-  const since = rangeStart(range);
-
-  // Available zones for the selector (always unfiltered — the full set of options)
-  const { data: zoneRows } = await admin.from("trees").select("zone, side").eq("status", "active");
-  const zones = Array.from(new Set((zoneRows ?? []).map((r) => `${r.zone}${r.side}`))).sort();
-
-  // alerts: open count, tier-1 count, recent list — all zone-scoped, NOT time-ranged
-  // (open alerts are a current backlog, not a time-series metric)
-  let openAlertsQuery = admin.from("alerts").select("*, trees!inner(zone,side)", { count: "exact", head: true }).eq("status", "open");
-  let tier1AlertsQuery = admin.from("alerts").select("*, trees!inner(zone,side)", { count: "exact", head: true }).eq("status", "open").eq("tier", "tier_1");
-  let recentAlertsQuery = admin.from("alerts")
-    .select("alert_id, tier, category, subtype, tree_id, worker_id, created_at, status, trees!inner(zone,side)")
-    .eq("status", "open")
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  // task_logs: count + recent list — zone AND range scoped
-  let logsCountQuery = admin.from("task_logs").select("*, trees!inner(zone,side)", { count: "exact", head: true });
-  let recentLogsQuery = admin.from("task_logs")
-    .select("log_id, tree_id, task_type, worker_id, submitted_at, validation_status, validation_flags, trees!inner(zone,side)")
-    .order("submitted_at", { ascending: false })
-    .limit(20);
-  let harvestFormDataQuery = admin.from("task_logs")
-    .select("form_data, trees!inner(zone,side)")
-    .eq("task_type", "harvest");
-
-  // Stale trees / overdue sets: current backlog, not time-ranged — same treatment as
-  // alerts above. derived_days_since_last_log is written as 0 on every log insert and
-  // never updated after that (see submit-log route), so it can't be trusted for "is
-  // this tree currently stale" — derive it from derived_last_updated instead.
-  const staleCutoff = new Date(Date.now() - STALE_TREE_DAYS * 24 * 60 * 60 * 1000);
-  let staleTreesQuery = admin.from("trees")
-    .select("tree_id, zone, side, derived_last_updated")
-    .eq("status", "active")
-    .or(`derived_last_updated.is.null,derived_last_updated.lt.${staleCutoff.toISOString()}`)
-    .order("derived_last_updated", { ascending: true, nullsFirst: true })
-    .limit(20);
-
-  const today = new Date().toISOString().slice(0, 10);
-  let overdueSetsQuery = admin.from("sets")
-    .select("set_id, tree_id, color, harvest_window_end, trees!inner(zone,side)")
-    .not("status", "in", "(harvested,failed)")
-    .lt("harvest_window_end", today)
-    .order("harvest_window_end", { ascending: true })
-    .limit(20);
-
-  if (since) {
-    logsCountQuery = logsCountQuery.gte("submitted_at", since.toISOString());
-    recentLogsQuery = recentLogsQuery.gte("submitted_at", since.toISOString());
-    harvestFormDataQuery = harvestFormDataQuery.gte("submitted_at", since.toISOString());
+  const { data, error } = await gate.admin.rpc("dashboard_snapshot", { p_stale_days: STALE_TREE_DAYS });
+  if (error) {
+    console.error("dashboard_snapshot failed:", error);
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
-
-  if (zoneFilter) {
-    openAlertsQuery = openAlertsQuery.eq("trees.zone", zoneFilter.zone).eq("trees.side", zoneFilter.side);
-    tier1AlertsQuery = tier1AlertsQuery.eq("trees.zone", zoneFilter.zone).eq("trees.side", zoneFilter.side);
-    recentAlertsQuery = recentAlertsQuery.eq("trees.zone", zoneFilter.zone).eq("trees.side", zoneFilter.side);
-    logsCountQuery = logsCountQuery.eq("trees.zone", zoneFilter.zone).eq("trees.side", zoneFilter.side);
-    recentLogsQuery = recentLogsQuery.eq("trees.zone", zoneFilter.zone).eq("trees.side", zoneFilter.side);
-    harvestFormDataQuery = harvestFormDataQuery.eq("trees.zone", zoneFilter.zone).eq("trees.side", zoneFilter.side);
-    staleTreesQuery = staleTreesQuery.eq("zone", zoneFilter.zone).eq("side", zoneFilter.side);
-    overdueSetsQuery = overdueSetsQuery.eq("trees.zone", zoneFilter.zone).eq("trees.side", zoneFilter.side);
-  }
-
-  const [
-    { count: openAlertsCount },
-    { count: tier1AlertsCount },
-    { count: logsInRangeCount },
-    { data: recentAlerts },
-    { data: recentLogs },
-    { data: harvestLogs },
-    { data: staleTrees },
-    { data: overdueSets },
-  ] = await Promise.all([
-    openAlertsQuery,
-    tier1AlertsQuery,
-    logsCountQuery,
-    recentAlertsQuery,
-    recentLogsQuery,
-    harvestFormDataQuery,
-    staleTreesQuery,
-    overdueSetsQuery,
-  ]);
-
-  const now = Date.now();
-  const daysBetween = (iso: string) => Math.floor((now - new Date(iso).getTime()) / (24 * 60 * 60 * 1000));
-
-  const staleTreesWithDays = (staleTrees ?? []).map((tree) => ({
-    treeId: tree.tree_id,
-    zone: tree.zone,
-    side: tree.side,
-    daysSinceLastLog: tree.derived_last_updated ? daysBetween(tree.derived_last_updated) : null,
-  }));
-
-  const overdueSetsWithDays = (overdueSets ?? []).map((set) => ({
-    setId: set.set_id,
-    treeId: set.tree_id,
-    color: set.color,
-    daysOverdue: daysBetween(set.harvest_window_end),
-  }));
-
-  // Sum grade_counts across harvest logs in range/zone
-  const fruitByGrade: Record<string, number> = {};
-  for (const log of harvestLogs ?? []) {
-    const gradeCounts = (log.form_data as Record<string, unknown> | null)?.grade_counts;
-    if (!gradeCounts || typeof gradeCounts !== "object") continue;
-    for (const [grade, count] of Object.entries(gradeCounts as Record<string, unknown>)) {
-      const n = Number(count);
-      if (!isNaN(n)) fruitByGrade[grade] = (fruitByGrade[grade] ?? 0) + n;
-    }
-  }
-  const fruitTotalInRange = Object.values(fruitByGrade).reduce((sum, n) => sum + n, 0);
-
-  return NextResponse.json({
-    zones,
-    range,
-    openAlertsCount: openAlertsCount ?? 0,
-    tier1AlertsCount: tier1AlertsCount ?? 0,
-    logsInRangeCount: logsInRangeCount ?? 0,
-    fruitTotalInRange,
-    fruitByGrade,
-    recentAlerts: recentAlerts ?? [],
-    recentLogs: recentLogs ?? [],
-    staleTreesCount: staleTreesWithDays.length,
-    staleTrees: staleTreesWithDays,
-    overdueSetsCount: overdueSetsWithDays.length,
-    overdueSets: overdueSetsWithDays,
-  });
+  return NextResponse.json(data);
 }

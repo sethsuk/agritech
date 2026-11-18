@@ -3,87 +3,60 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { isValidTreeId } from "@/lib/treeId";
 import { downloadTreeQrLabel } from "@/lib/qrLabel";
-import { t } from "@/lib/i18n/t";
-import { useLang } from "@/lib/i18n/LanguageContext";
-import { dict, type DictKey } from "@/lib/i18n/dictionary";
-import { KNOWN_VARIETIES, varietyName } from "@/lib/i18n/varieties";
-import { DateInputDMY } from "@/components/DateInputDMY";
+import { useT } from "@/lib/i18n/LanguageContext";
+import { errorMessage } from "@/lib/i18n/labels";
+import { api, errorBody } from "@/lib/client/api";
+import { qk } from "@/lib/client/queries";
+import { KNOWN_VARIETIES } from "@/lib/i18n/varieties";
+import type { GpsFix } from "@/lib/geo";
+import type { DateInputState } from "@/components/DateInputDMY";
+import { FormField, RequiredLegend } from "@/components/FormField";
+import { GpsField, PlantedDateField, VarietyField, varietyOf, type VarietyValue } from "@/components/manager/TreeFields";
 import type { DbTree } from "@/types/database";
 
 export default function NewTreePage() {
   const router = useRouter();
-  const { lang } = useLang();
+  const { lang, tr } = useT();
+  const queryClient = useQueryClient();
 
   const [treeId, setTreeId] = useState("");
-  const [varietyChoice, setVarietyChoice] = useState(KNOWN_VARIETIES[0]);
-  const [customVariety, setCustomVariety] = useState("");
-  const [plantedDate, setPlantedDate] = useState("");
-  const [gps, setGps] = useState<{ lat: number; long: number } | null>(null);
-  const [capturingGps, setCapturingGps] = useState(false);
+  const [variety, setVariety] = useState<VarietyValue>({ choice: KNOWN_VARIETIES[0], custom: "" });
+  const [planted, setPlanted] = useState<DateInputState>({ iso: null, problem: null });
+  const [gps, setGps] = useState<GpsFix | null>(null);
+  const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [createdTree, setCreatedTree] = useState<DbTree | null>(null);
 
-  const tr = (key: DictKey) => t(dict[key], lang);
-
   const treeIdTrimmed = treeId.trim().toUpperCase();
   const treeIdValid = treeIdTrimmed.length === 0 || isValidTreeId(treeIdTrimmed);
-  const variety = varietyChoice === "other" ? customVariety.trim() : varietyChoice;
-
-  const canSubmit =
-    isValidTreeId(treeIdTrimmed) &&
-    variety.length > 0 &&
-    plantedDate.length > 0 &&
-    gps !== null &&
-    !submitting;
-
-  function captureGps() {
-    if (!navigator.geolocation) {
-      toast.error(tr("gpsUnsupported"));
-      return;
-    }
-    setCapturingGps(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setGps({ lat: pos.coords.latitude, long: pos.coords.longitude });
-        setCapturingGps(false);
-      },
-      () => {
-        toast.error(tr("gpsReadFailedRetry"));
-        setCapturingGps(false);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    );
-  }
+  const varietyValue = varietyOf(variety);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit || !gps) return;
+    setSubmitted(true);
+    // Never a silently-disabled button: submit is always enabled and explains what's missing.
+    if (!isValidTreeId(treeIdTrimmed) || !varietyValue || !planted.iso || !gps) {
+      toast.error(tr("fixErrorsFirst"));
+      return;
+    }
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/manager/trees", {
+      const data = await api<{ tree: DbTree }>("/api/manager/trees", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          treeId: treeIdTrimmed,
-          lat: gps.lat,
-          long: gps.long,
-          variety,
-          plantedDate,
-        }),
+        json: { treeId: treeIdTrimmed, lat: gps.lat, long: gps.long, variety: varietyValue, plantedDate: planted.iso },
       });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.detail ?? tr("createTreeFailedToast"));
-        return;
-      }
+      // A new zone must appear in every zone filter: refresh the cached lists.
+      queryClient.invalidateQueries({ queryKey: qk.trees });
+      queryClient.invalidateQueries({ queryKey: qk.overview });
       toast.success(tr("treeCreatedToast"));
       setCreatedTree(data.tree);
-    } catch {
-      toast.error(tr("scanError"));
+    } catch (err) {
+      toast.error(errorMessage(errorBody(err), lang));
     } finally {
       setSubmitting(false);
     }
@@ -91,10 +64,10 @@ export default function NewTreePage() {
 
   function resetForm() {
     setTreeId("");
-    setVarietyChoice(KNOWN_VARIETIES[0]);
-    setCustomVariety("");
-    setPlantedDate("");
+    setVariety({ choice: KNOWN_VARIETIES[0], custom: "" });
+    setPlanted({ iso: null, problem: null });
     setGps(null);
+    setSubmitted(false);
     setCreatedTree(null);
   }
 
@@ -140,81 +113,42 @@ export default function NewTreePage() {
       </div>
       <h1 className="mb-6 text-2xl font-bold text-ink">{tr("newTreeTitle")}</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-lg bg-surface p-5 border border-line">
-        <div>
-          <label className="mb-1.5 block text-sm font-semibold text-body">
-            {tr("treeIdLabel")}
-          </label>
+      <form onSubmit={handleSubmit} noValidate className="space-y-4 rounded-lg bg-surface p-5 border border-line">
+        <RequiredLegend />
+        <FormField
+          htmlFor="tree-id"
+          label={tr("treeIdLabel")}
+          required
+          hint={tr("treeIdFormatHint")}
+          error={!treeIdValid || (submitted && !treeIdTrimmed) ? tr("invalidFormat") : undefined}
+        >
           <input
+            id="tree-id"
             type="text"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
             value={treeId}
             onChange={(e) => setTreeId(e.target.value)}
             placeholder="AL13-7"
             required
-            className={`h-12 w-full rounded-lg border px-4 text-base uppercase focus:outline-none ${
-              treeIdValid ? "border-line focus:border-primary" : "border-warning"
+            aria-invalid={!treeIdValid || undefined}
+            className={`h-12 w-full rounded-lg border px-4 font-mono text-base uppercase focus:outline-none ${
+              treeIdValid ? "border-line focus:border-primary" : "border-2 border-warning"
             }`}
           />
-          <p className="mt-1 text-xs text-muted">
-            {tr("treeIdFormatHint")}
-          </p>
-          {!treeIdValid && (
-            <p className="mt-1 text-xs text-warning-ink">{tr("invalidFormat")}</p>
-          )}
-        </div>
+        </FormField>
 
+        <VarietyField value={variety} onChange={setVariety} />
+        <PlantedDateField initial="" state={planted} onChange={setPlanted} showAllErrors={submitted} />
         <div>
-          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("colVariety")}</label>
-          <select
-            value={varietyChoice}
-            onChange={(e) => setVarietyChoice(e.target.value)}
-            className="h-12 w-full rounded-lg border border-line px-4 text-base focus:border-primary focus:outline-none"
-          >
-            {/* value stays the canonical romanized name; only the label is translated */}
-            {KNOWN_VARIETIES.map((v) => (
-              <option key={v} value={v}>{varietyName(v, lang)}</option>
-            ))}
-            <option value="other">{tr("otherOption")}</option>
-          </select>
-          {varietyChoice === "other" && (
-            <input
-              type="text"
-              value={customVariety}
-              onChange={(e) => setCustomVariety(e.target.value)}
-              placeholder={tr("customVarietyPlaceholder")}
-              required
-              className="mt-2 h-12 w-full rounded-lg border border-line px-4 text-base focus:border-primary focus:outline-none"
-            />
-          )}
-        </div>
-
-        <div>
-          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("plantedDateLabel")}</label>
-          <DateInputDMY value={plantedDate} onChange={setPlantedDate} required />
-        </div>
-
-        <div>
-          <label className="mb-1.5 block text-sm font-semibold text-body">{tr("gpsLocationLabel")}</label>
-          <button
-            type="button"
-            onClick={captureGps}
-            disabled={capturingGps}
-            className={`h-12 w-full rounded-lg text-sm font-semibold ${
-              gps ? "bg-primary-tint text-primary-ink" : "bg-surface-alt text-body"
-            } disabled:opacity-50`}
-          >
-            {capturingGps
-              ? tr("readingLocation")
-              : gps
-              ? `✓ ${gps.lat.toFixed(6)}, ${gps.long.toFixed(6)}`
-              : tr("currentLocationButton")}
-          </button>
-          <p className="mt-1 text-xs text-muted">{tr("gpsStandHint")}</p>
+          <GpsField value={gps} onChange={setGps} required buttonLabel={tr("currentLocationButton")} />
+          {submitted && !gps && <p role="alert" className="mt-1.5 text-sm font-semibold text-warning-ink">{tr("gpsReadFailedRetry")}</p>}
         </div>
 
         <button
           type="submit"
-          disabled={!canSubmit}
+          disabled={submitting}
           className="h-12 w-full rounded-lg bg-primary text-base font-semibold text-white transition active:bg-primary-press disabled:bg-surface-press"
         >
           {submitting ? tr("submitting") : tr("createTreeButton")}

@@ -3,7 +3,8 @@ import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { config } from "dotenv";
 
-config({ path: ".env.local" });
+// ENV_FILE selects which database to target (default .env.local = dev); see scripts/setup-prod.ts.
+config({ path: process.env.ENV_FILE ?? ".env.local", quiet: true });
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -35,7 +36,9 @@ async function run() {
       const msg = err instanceof Error ? err.message : String(err);
       // Skip "already exists" errors so the script is re-runnable
       if (msg.includes("already exists")) {
-        console.log("(already exists, skipped)");
+        // Print the message: a name clash with a *different* object (e.g. a view named
+        // like an enum type) also says "already exists" and would otherwise hide a real bug.
+        console.log(`(already exists, skipped — ${msg.split("\n")[0]})`);
       } else {
         console.error(`\n❌  Failed:\n${msg}`);
         await client.end();

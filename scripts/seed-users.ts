@@ -10,6 +10,7 @@ import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { resolve } from "path";
 import ws from "ws";
+import { toAuthPassword } from "../lib/auth/pin";
 
 // supabase-js eagerly constructs a RealtimeClient, which needs a WebSocket impl.
 // Node < 22 has none natively. This script never uses realtime — this only satisfies
@@ -52,7 +53,7 @@ async function run() {
 
     const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
       email: account.email,
-      password: account.password,
+      password: toAuthPassword(account.password), // 4-digit PINs are prefixed — see lib/auth/pin.ts
       email_confirm: true, // workers have no email access, skip verification
     });
 
@@ -67,7 +68,16 @@ async function run() {
         process.exit(1);
       }
       userId = existingId;
-      note = "auth existed, profile re-synced";
+      // Re-apply the password too: accounts created before lib/auth/pin.ts have the raw
+      // PIN stored, which login (which now prefixes PINs) would no longer accept.
+      const { error: pwErr } = await supabase.auth.admin.updateUserById(userId, {
+        password: toAuthPassword(account.password),
+      });
+      if (pwErr) {
+        console.error(`\n❌  Password reset error: ${pwErr.message}`);
+        process.exit(1);
+      }
+      note = "auth existed, profile + password re-synced";
     } else {
       userId = authData.user.id;
     }

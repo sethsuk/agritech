@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireWorker } from "@/lib/auth/requireWorker";
+import { requireWorker } from "@/lib/auth/gate";
 import type { DbTaskLog } from "@/types/database";
 
 // GET /api/my-logs/:logId — one record's full audit trail: the original submission
@@ -23,10 +23,10 @@ export async function GET(
     .maybeSingle<DbTaskLog>();
 
   if (fetchErr || !requested) {
-    return NextResponse.json({ error: "Log not found" }, { status: 404 });
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
   if (requested.worker_id !== userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const rootId = requested.correction_of_log_id ?? requested.log_id;
@@ -39,7 +39,7 @@ export async function GET(
     .returns<DbTaskLog[]>();
 
   if (trailErr || !trail) {
-    return NextResponse.json({ error: "Failed to load log history" }, { status: 500 });
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 
   return NextResponse.json({ rootLogId: rootId, trail });

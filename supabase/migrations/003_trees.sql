@@ -14,12 +14,8 @@ CREATE TABLE public.trees (
   status tree_status NOT NULL DEFAULT 'active',
   retired_date DATE,
 
-  -- Cached derived state (recomputed on each new task_log for this tree)
-  derived_last_updated TIMESTAMPTZ,
-  derived_active_set_ids TEXT[] NOT NULL DEFAULT '{}',
-  derived_health_score NUMERIC(3,2) NOT NULL DEFAULT 1.0,
-  derived_open_alerts INTEGER NOT NULL DEFAULT 0,
-  derived_days_since_last_log INTEGER,
+  -- No cached derived_* columns: last log, open alerts and open sets are computed live
+  -- by the tree_status view (013_views.sql). Cached copies had no reliable writer.
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

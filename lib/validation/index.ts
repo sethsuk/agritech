@@ -3,6 +3,9 @@ import { checkPresence } from "./presence";
 import { checkTiming } from "./timing";
 import { checkBounds } from "./bounds";
 import { checkFields } from "./fields";
+import type { Rejection } from "./rejection";
+
+export type { Rejection } from "./rejection";
 
 export interface ValidationInput {
   tree: DbTree;
@@ -20,55 +23,48 @@ export interface ValidationOutput {
   status: ValidationStatus;
   flags: string[];
   gpsDistanceMeters: number | null;
-  rejectionReason?: string;
+  rejection?: Rejection;
 }
 
 export function validate(input: ValidationInput): ValidationOutput {
-  // Allow disabling field validation during local development/testing
-  if (process.env.SKIP_VALIDATION === "true") {
-    return { status: "passed", flags: [], gpsDistanceMeters: null };
-  }
+  // SKIP_VALIDATION=true (local/e2e only) skips the checks a laptop can't satisfy —
+  // presence (GPS/QR) and timing. Field and bounds checks always run: they protect data
+  // integrity, not fraud detection, and skipping them let malformed values reach the DB.
+  const skipPresence = process.env.SKIP_VALIDATION === "true";
 
   const allFlags: string[] = [];
+  let gpsDistanceMeters: number | null = null;
 
-  // Layer 1 — Presence
-  const { flags: presenceFlags, gpsDistanceMeters } = checkPresence({
-    qrValue: input.qrValue,
-    tree: input.tree,
-    gpsLat: input.gpsLat,
-    gpsLong: input.gpsLong,
-  });
-  allFlags.push(...presenceFlags);
+  if (!skipPresence) {
+    // Layer 1 — Presence
+    const presence = checkPresence({
+      qrValue: input.qrValue,
+      tree: input.tree,
+      gpsLat: input.gpsLat,
+      gpsLong: input.gpsLong,
+    });
+    allFlags.push(...presence.flags);
+    gpsDistanceMeters = presence.gpsDistanceMeters;
 
-  // Layer 2 — Timing
-  const timingFlags = checkTiming({
-    formOpenedAt: input.formOpenedAt,
-    qrScannedAt: input.qrScannedAt,
-    submittedAt: input.submittedAt,
-    taskDef: input.taskDef,
-  });
-  allFlags.push(...timingFlags);
+    // Layer 2 — Timing
+    allFlags.push(...checkTiming({
+      formOpenedAt: input.formOpenedAt,
+      qrScannedAt: input.qrScannedAt,
+      submittedAt: input.submittedAt,
+      taskDef: input.taskDef,
+    }));
+  }
 
   // Layer 3 — Required fields present and option values legal (hard violations → reject)
   const fieldsResult = checkFields(input.formData, input.taskDef.fields);
   if (!fieldsResult.ok) {
-    return {
-      status: "rejected",
-      flags: allFlags,
-      gpsDistanceMeters,
-      rejectionReason: fieldsResult.error,
-    };
+    return { status: "rejected", flags: allFlags, gpsDistanceMeters, rejection: fieldsResult.rejection };
   }
 
-  // Layer 4 — Input bounds (hard violations → reject)
+  // Layer 4 — Input bounds (hard violations → reject, soft → flag)
   const boundsResult = checkBounds(input.formData, input.taskDef.fields);
   if (!boundsResult.ok) {
-    return {
-      status: "rejected",
-      flags: allFlags,
-      gpsDistanceMeters,
-      rejectionReason: boundsResult.error,
-    };
+    return { status: "rejected", flags: allFlags, gpsDistanceMeters, rejection: boundsResult.rejection };
   }
   allFlags.push(...boundsResult.flags);
 

@@ -3,11 +3,18 @@
 import type { TaskFieldOption } from "@/types/database";
 import { t } from "@/lib/i18n/t";
 import { useLang } from "@/lib/i18n/LanguageContext";
+import { SelectedCheck } from "./SelectedCheck";
+import { useRadioGroup } from "@/lib/client/useRadioGroup";
 
 type Props = {
   options: TaskFieldOption[];
   value: string | null;
   onChange: (v: string) => void;
+  /** Options that can't be picked right now (e.g. a ribbon colour already on an open set). */
+  disabledValues?: string[];
+  disabledNote?: string;
+  /** id of the visible label naming this group. */
+  labelledBy?: string;
 };
 
 // Ribbon colors are domain data (the physical ribbon on the tree), not UI
@@ -27,29 +34,40 @@ const colorBg: Record<string, string> = {
   white: "bg-ribbon-white",
 };
 
-export function ColorPicker({ options, value, onChange }: Props) {
+export function ColorPicker({ options, value, onChange, disabledValues = [], disabledNote, labelledBy }: Props) {
   const { lang } = useLang();
+  const radio = useRadioGroup(options.map((o) => o.value), value, onChange, disabledValues);
   return (
-    <div className="flex gap-4">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={`flex flex-col items-center gap-1.5 rounded-lg p-3 transition ${
-            value === opt.value
-              ? `ring-4 ${colorRing[opt.value] ?? "ring-primary"} bg-surface border border-line`
-              : "bg-surface-alt"
-          }`}
-        >
-          <div
-            className={`h-10 w-10 rounded-full ${colorBg[opt.value] ?? "bg-surface-press"} ${
-              opt.value === "white" ? "border border-line" : ""
+    // Grid, not a single flex row: four swatches overflowed 320–360px phones.
+    <div className="grid grid-cols-2 gap-3 min-[400px]:grid-cols-4" role="radiogroup" aria-labelledby={labelledBy}>
+      {options.map((opt, i) => {
+        const selected = value === opt.value;
+        const disabled = disabledValues.includes(opt.value);
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            {...radio(i)}
+            disabled={disabled}
+            onClick={() => onChange(opt.value)}
+            className={`relative flex min-h-15 flex-col items-center gap-1.5 rounded-lg p-3 transition disabled:opacity-40 ${
+              selected
+                ? `ring-4 ${colorRing[opt.value] ?? "ring-primary"} border border-line bg-surface`
+                : "bg-surface-alt"
             }`}
-          />
-          <span className="text-base font-semibold text-body">{opt.icon} {t(opt.label, lang)}</span>
-        </button>
-      ))}
+          >
+            {/* A ✓ as well as the ring: colour alone is unreadable in direct sun. */}
+            {selected && <SelectedCheck />}
+            <div
+              className={`h-10 w-10 rounded-full ${colorBg[opt.value] ?? "bg-surface-press"} ${
+                opt.value === "white" ? "border border-line" : ""
+              }`}
+            />
+            <span className="text-base font-semibold text-body">{t(opt.label, lang)}</span>
+            {disabled && disabledNote && <span className="text-xs text-muted">({disabledNote})</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }

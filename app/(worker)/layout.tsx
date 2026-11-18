@@ -1,28 +1,19 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getSession, isStaff } from "@/lib/auth/gate";
 
 export default async function WorkerLayout({ children }: { children: ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const me = await getSession();
+  if (!me) redirect("/login");
 
   // Ensure role is worker (managers who navigate here should go to /dashboard)
-  const admin = createAdminClient();
-  const { data: profile } = await admin
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profile?.role === "manager" || profile?.role === "owner") {
-    redirect("/dashboard");
-  }
+  if (isStaff(me.role)) redirect("/dashboard");
+  // Deactivated: the auth ban stops new sign-ins, but an existing session can outlive
+  // it — send them to login, which signs them out and explains why.
+  if (!me.active) redirect("/login?reason=inactive");
 
   return (
-    <div className="min-h-dvh bg-surface-alt font-[family-name:var(--font-thai)]">
+    <div className="min-h-dvh bg-surface-alt">
       {children}
     </div>
   );

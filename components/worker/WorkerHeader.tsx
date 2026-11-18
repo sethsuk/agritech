@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useSignOut } from "@/lib/client/useSignOut";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLang } from "@/lib/i18n/LanguageContext";
 import { t } from "@/lib/i18n/t";
@@ -22,20 +21,16 @@ type BackProps = {
    * wrong language can fix it without backing out to home.
    */
   showLanguageToggle?: boolean;
+  /** Hide logout (on data-entry screens, where a mis-tap would discard the form). */
+  hideLogout?: boolean;
 };
 
 type Props = HomeProps | BackProps;
 
 export function WorkerHeader(props: Props) {
-  const router = useRouter();
   const { lang } = useLang();
 
-  async function handleLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
+  const handleLogout = useSignOut();
 
   if (props.variant === "home") {
     return (
@@ -75,7 +70,7 @@ export function WorkerHeader(props: Props) {
           </svg>
         </button>
         <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{props.title}</h1>
-        <button
+        {!props.hideLogout && <button
           onClick={handleLogout}
           className="flex h-15 w-15 flex-shrink-0 items-center justify-center rounded-full text-muted active:bg-surface-alt"
           aria-label={t(dict.logout, lang)}
@@ -85,7 +80,7 @@ export function WorkerHeader(props: Props) {
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" y1="12" x2="9" y2="12" />
           </svg>
-        </button>
+        </button>}
       </div>
 
       {props.showLanguageToggle && (

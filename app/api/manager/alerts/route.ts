@@ -1,41 +1,41 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireStaff } from "@/lib/auth/requireStaff";
-import type { AlertStatus } from "@/types/database";
+import { requireStaff } from "@/lib/auth/gate";
+import { fetchAll } from "@/lib/supabase/fetchAll";
 
-// GET /api/manager/alerts — paginated alerts by status, newest first.
-// PATCH /api/manager/alerts — update alert status.
-// Both require manager or owner role.
+// GET /api/manager/alerts — every active alert plus the most recent closed ones, in one
+// response. The page filters by status client-side, so switching tabs needs no request.
+// PATCH /api/manager/alerts — resolve, dismiss, or REOPEN an alert.
 
-const ALERT_STATUSES: readonly AlertStatus[] = ["open", "reviewed", "resolved", "dismissed"];
+const CLOSED_LIMIT = 300;
 
-export async function GET(request: Request) {
+const SELECT = "*, trees(tree_id, zone, side), workers(worker_id, users(display_name))";
+
+export async function GET() {
   const gate = await requireStaff();
   if (!gate.ok) return gate.response;
   const { admin } = gate;
 
-  const { searchParams } = new URL(request.url);
-  const statusParam = searchParams.get("status");
-  const status: AlertStatus = ALERT_STATUSES.includes(statusParam as AlertStatus)
-    ? (statusParam as AlertStatus)
-    : "open";
-
-  const { data, error } = await admin
-    .from("alerts")
-    .select("*, trees(tree_id,zone,variety), workers(worker_id,users(display_name))")
-    .eq("status", status)
-    .order("tier", { ascending: true })
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data ?? []);
+  const [active, closed] = await Promise.all([
+    // Every active alert — paged past PostgREST's 1000-row cap.
+    fetchAll((from, to) => admin.from("alerts").select(SELECT).in("status", ["open", "reviewed"])
+      .order("created_at", { ascending: false }).order("alert_id").range(from, to)),
+    admin.from("alerts").select(SELECT).in("status", ["resolved", "dismissed"])
+      .order("resolution_resolved_at", { ascending: false, nullsFirst: false })
+      .limit(CLOSED_LIMIT),
+  ]);
+  if (active.error || closed.error) {
+    console.error("alerts load failed:", active.error ?? closed.error);
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
+  }
+  return NextResponse.json({ alerts: [...(active.data ?? []), ...(closed.data ?? [])] });
 }
 
 const PatchSchema = z.object({
   alertId: z.string().uuid(),
-  status: z.enum(["reviewed", "resolved", "dismissed"]),
-  notes: z.string().optional(),
+  // "reviewed" is accepted so Undo can restore an alert to exactly its previous status.
+  status: z.enum(["open", "reviewed", "resolved", "dismissed"]),
+  notes: z.string().trim().max(500).optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -45,26 +45,34 @@ export async function PATCH(request: Request) {
 
   const body = await request.json().catch(() => null);
   const parsed = PatchSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-
+  if (!parsed.success) return NextResponse.json({ error: "bad_request" }, { status: 400 });
   const { alertId, status, notes } = parsed.data;
+
+  // Reopening clears the resolution so the alert reads as genuinely open again.
+  const update = status === "open" || status === "reviewed"
+    ? {
+        status,
+        resolution_action_taken: null,
+        resolution_resolved_by: null,
+        resolution_resolved_at: null,
+        resolution_notes: null,
+      }
+    : {
+        status,
+        resolution_action_taken: status,
+        resolution_resolved_by: userId,
+        resolution_resolved_at: new Date().toISOString(),
+        resolution_notes: notes || null,
+      };
 
   const { data: updated, error } = await admin
     .from("alerts")
-    .update({
-      status,
-      resolution_action_taken: status,
-      resolution_resolved_by: userId,
-      resolution_resolved_at: new Date().toISOString(),
-      resolution_notes: notes ?? null,
-    })
+    .update(update)
     .eq("alert_id", alertId)
-    .select("alert_id")
+    .select(SELECT)
     .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  // Previously returned ok:true even for an alert_id that matched nothing.
-  if (!updated) return NextResponse.json({ error: "Alert not found" }, { status: 404 });
-
-  return NextResponse.json({ ok: true });
+  if (error) return NextResponse.json({ error: "server_error" }, { status: 500 });
+  if (!updated) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  return NextResponse.json({ alert: updated });
 }

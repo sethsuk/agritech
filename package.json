@@ -8,17 +8,22 @@
     "dev:https": "next dev --experimental-https",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed:trees": "tsx supabase/seed/02_trees.ts",
     "setup:storage": "tsx scripts/setup-storage.ts",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:reset:dev": "tsx scripts/reset-db.ts",
+    "test:sql": "tsx scripts/test-sql.ts",
+    "test:unit": "vitest run",
+    "setup:prod": "tsx scripts/setup-prod.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.47.10",
+    "@tanstack/react-query": "^5.108.0",
     "@types/qrcode": "^1.5.6",
     "@vercel/analytics": "^2.0.1",
     "browser-image-compression": "^2.0.2",
@@ -33,6 +38,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@playwright/test": "1.62.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/leaflet": "^1.9.15",
@@ -42,11 +48,14 @@
     "@types/react-dom": "^19.0.3",
     "@types/ws": "^8.18.1",
     "dotenv": "^17.4.2",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "15.5",
     "pg": "^8.21.0",
     "postcss": "^8.5.1",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
+    "vitest": "^3.2.7",
     "ws": "^8.21.0"
   }
 }

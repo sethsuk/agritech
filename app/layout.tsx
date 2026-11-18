@@ -3,6 +3,7 @@ import { Noto_Sans, Noto_Sans_Thai, Noto_Sans_Myanmar } from "next/font/google";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
+import { QueryProvider } from "@/components/QueryProvider";
 import "./globals.css";
 
 // One coordinated Noto family per script — no single typeface has well-designed
@@ -45,8 +46,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Pinch-zoom stays enabled (WCAG 1.4.4) — the 16px input font rule in globals.css is
+  // what stops iOS auto-zooming on focus. viewportFit "cover" makes env(safe-area-inset-*)
+  // non-zero on notched iPhones, so the fixed bottom bars clear the home indicator.
+  viewportFit: "cover",
   themeColor: "#1b5e20",
 };
 
@@ -58,7 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="min-h-dvh">
         <LanguageProvider>
-          {children}
+          <QueryProvider>{children}</QueryProvider>
           <Toaster position="top-center" richColors closeButton duration={3000} />
         </LanguageProvider>
         <Analytics />

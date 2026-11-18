@@ -7,7 +7,7 @@ import ws from "ws";
 // time on Node < 22, even though this script only touches Storage.
 (globalThis as { WebSocket?: unknown }).WebSocket ??= ws;
 
-config({ path: resolve(process.cwd(), ".env.local") });
+config({ path: resolve(process.cwd(), process.env.ENV_FILE ?? ".env.local"), quiet: true });
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

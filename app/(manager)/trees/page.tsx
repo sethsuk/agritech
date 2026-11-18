@@ -1,192 +1,222 @@
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+"use client";
+
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useT } from "@/lib/i18n/LanguageContext";
+import { useTrees, useOverview, type TreeRow } from "@/lib/client/queries";
+import { parseZoneKey, zoneKey } from "@/lib/treeId";
+import { daysSince } from "@/lib/time";
+import { chipClass } from "@/lib/ui/badges";
+import { varietyName } from "@/lib/i18n/varieties";
+import { TreeHealthBadge } from "@/components/manager/TreeHealthBadge";
 import { TreeQrDownloadButton } from "@/components/manager/TreeQrDownloadButton";
-import { T } from "@/components/T";
-import { VarietyName } from "@/components/VarietyName";
+import { InfoTip } from "@/components/InfoTip";
+import { ErrorState, RefreshBar } from "@/components/QueryState";
 
-export default async function TreesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ zone?: string }>;
-}) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+const PAGE = 50;
 
-  const { zone: zoneFilter } = await searchParams;
+export default function TreesPage() {
+  return (
+    <Suspense>
+      <Trees />
+    </Suspense>
+  );
+}
 
-  const admin = createAdminClient();
+/**
+ * Every tree is loaded once (compact rows + live status) and cached; search, zone,
+ * "not checked recently" and retired filters run in memory. Zone chips are built from
+ * the data, so a new zone appears as soon as its first tree is added.
+ */
+function Trees() {
+  const { lang, tr } = useT();
+  const router = useRouter();
+  const params = useSearchParams();
+  const trees = useTrees();
+  // Only for staleDays, which the dashboard snapshot already carries (cached).
+  const overview = useOverview();
+  const staleDays = overview.data?.staleDays ?? 3;
 
-  const [{ data: zoneRows }, treesQuery] = await Promise.all([
-    admin.from("trees").select("zone, side").eq("status", "active"),
-    (async () => {
-      let query = admin
-        .from("trees")
-        .select("tree_id, qr_code, zone, side, row_num, position, variety, status, derived_last_updated, derived_open_alerts, derived_health_score")
-        .eq("status", "active")
-        .order("zone")
-        .order("side")
-        .order("row_num")
-        .order("position");
+  const zone = parseZoneKey(params.get("zone")) ? params.get("zone")! : null;
+  const staleOnly = params.get("stale") === "1";
+  const showRetired = params.get("retired") === "1";
+  const [query, setQuery] = useState("");
+  const [shown, setShown] = useState(PAGE);
 
-      const sideChar = zoneFilter?.slice(1);
-      const side = sideChar === "L" || sideChar === "R" ? sideChar : undefined;
-      if (zoneFilter && side) query = query.eq("zone", zoneFilter.slice(0, 1)).eq("side", side);
-      return query.limit(200);
-    })(),
-  ]);
-
-  const { data: trees } = treesQuery;
-
-  const zones = Array.from(
-    new Set((zoneRows ?? []).map((r) => `${r.zone}${r.side}`)),
-  ).sort();
-
-  // derived_days_since_last_log is written as 0 on every log insert and never updated
-  // after that (see submit-log route) — compute the real value from the timestamp instead.
-  const daysSinceLastLog = (derivedLastUpdated: string | null) =>
-    derivedLastUpdated === null
-      ? null
-      : Math.floor((Date.now() - new Date(derivedLastUpdated).getTime()) / (24 * 60 * 60 * 1000));
-
-  const healthColor = (score: number) => {
-    if (score >= 0.8) return "text-primary-ink";
-    if (score >= 0.5) return "text-caution-ink";
-    return "text-warning-ink";
+  const setParam = (key: string, value: string | null) => {
+    const qs = new URLSearchParams(params);
+    if (value) qs.set(key, value); else qs.delete(key);
+    setShown(PAGE);
+    router.replace(`/trees?${qs}`, { scroll: false });
   };
+  const filtersActive = zone !== null || staleOnly || showRetired || query !== "";
 
-  const healthBg = (score: number) => {
-    if (score >= 0.8) return "bg-primary-tint text-primary-ink";
-    if (score >= 0.5) return "bg-caution-tint text-caution-ink";
-    return "bg-warning-tint text-warning-ink";
-  };
+  const zones = useMemo(
+    () => [...new Set((trees.data ?? []).filter((t) => t.status === "active").map((t) => zoneKey(t.zone, t.side)))].sort(),
+    [trees.data],
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    return (trees.data ?? []).filter((t) => {
+      if (!showRetired && t.status !== "active") return false;
+      if (showRetired && t.status === "active") return false;
+      if (zone && zoneKey(t.zone, t.side) !== zone) return false;
+      if (q && !t.tree_id.includes(q)) return false;
+      if (staleOnly) {
+        const d = daysSince(t.last_log_at);
+        if (d !== null && d < staleDays) return false;
+      }
+      return true;
+    });
+  }, [trees.data, query, zone, staleOnly, showRetired, staleDays]);
+
+  const page = filtered.slice(0, shown);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
-      {/* Header + zone filter */}
-      <div className="mb-6 flex items-start justify-between gap-3">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h1 className="mb-3 text-2xl font-bold text-ink"><T k="navTrees" /> ({trees?.length ?? 0})</h1>
-          <div className="flex flex-wrap gap-2">
-            {zones.map((z) => (
-              <Link
-                key={z}
-                href={`/trees?zone=${z}`}
-                className={`inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-semibold sm:min-h-0 sm:py-1.5 ${
-                  zoneFilter === z ? "bg-primary text-white" : "bg-surface text-body border border-line"
-                }`}
-              >
-                {z}
-              </Link>
-            ))}
-            {zoneFilter && (
-              <Link href="/trees" className="rounded-lg bg-surface-alt px-3 py-1.5 text-xs text-muted">
-                <T k="clearFilter" />
-              </Link>
-            )}
-          </div>
+          <h1 className="text-2xl font-bold text-ink">
+            {tr("navTrees")}{trees.data ? ` (${filtered.length})` : ""}
+          </h1>
+          <RefreshBar updatedAt={trees.dataUpdatedAt || undefined} fetching={trees.isFetching} onRefresh={() => trees.refetch()} />
         </div>
         <Link
           href="/trees/new"
           className="flex h-11 flex-shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-white active:bg-primary-press"
         >
-          <T k="addTreeButton" />
+          {tr("addTreeButton")}
         </Link>
       </div>
 
-      {/* Mobile: card list */}
-      <div className="space-y-2 sm:hidden">
-        {trees?.map((tree) => (
-          <Link
-            key={tree.tree_id}
-            href={`/trees/${tree.tree_id}`}
-            className="block rounded-lg bg-surface p-4 border border-line active:bg-surface-alt"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-mono font-semibold text-ink">{tree.tree_id}</p>
-                <p className="text-xs text-muted">{tree.zone}{tree.side} · <VarietyName variety={tree.variety} /></p>
-              </div>
-              <div className="flex items-center gap-2">
-                {Number(tree.derived_open_alerts) > 0 && (
-                  <span className="rounded-full bg-warning-tint px-2 py-0.5 text-xs font-semibold text-warning-ink">
-                    🔔 {tree.derived_open_alerts}
-                  </span>
-                )}
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${healthBg(Number(tree.derived_health_score))}`}>
-                  {Math.round(Number(tree.derived_health_score) * 100)}%
-                </span>
-                <TreeQrDownloadButton treeId={tree.tree_id} qrCode={tree.qr_code} />
-              </div>
-            </div>
-            <p className="mt-1 text-xs text-muted">
-              <T k="recentLogsTitle" />: {daysSinceLastLog(tree.derived_last_updated) !== null
-                ? <>{daysSinceLastLog(tree.derived_last_updated)} <T k="daysAgoSuffix" /></>
-                : <T k="neverLoggedYet" />}
-            </p>
-          </Link>
-        ))}
-        {(!trees || trees.length === 0) && (
-          <div className="rounded-lg bg-surface p-8 text-center text-muted border border-line"><T k="noTreesFound" /></div>
-        )}
+      <div className="mb-4 space-y-2">
+        <label htmlFor="tree-search" className="sr-only">{tr("searchTreePlaceholder")}</label>
+        <input
+          id="tree-search"
+          type="search"
+          inputMode="text"
+          autoCapitalize="characters"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setShown(PAGE); }}
+          placeholder={tr("searchTreePlaceholder")}
+          className="h-11 w-full rounded-lg border border-line bg-surface px-3 text-base text-ink sm:max-w-sm"
+        />
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label={tr("zoneLabel")}>
+          <button type="button" aria-pressed={zone === null} onClick={() => setParam("zone", null)} className={chipClass(zone === null)}>
+            {tr("filterZoneAll")}
+          </button>
+          {zones.map((z) => (
+            <button key={z} type="button" aria-pressed={zone === z} onClick={() => setParam("zone", z)} className={chipClass(zone === z)}>
+              {z}
+            </button>
+          ))}
+          <span className="inline-flex items-center gap-1">
+            <button type="button" aria-pressed={staleOnly} onClick={() => setParam("stale", staleOnly ? null : "1")} className={chipClass(staleOnly)}>
+              {tr("statStaleTrees", { n: staleDays })}
+            </button>
+            <InfoTip text={tr("help_staleTrees", { n: staleDays })} />
+          </span>
+          <button type="button" aria-pressed={showRetired} onClick={() => setParam("retired", showRetired ? null : "1")} className={chipClass(showRetired)}>
+            {tr("retiredBadge")}
+          </button>
+          {filtersActive && (
+            // Same box model as the chips (inline-flex, min-h-11, border) so it lines up
+            // with them vertically — it used to be a bare padded link that sat high.
+            <button
+              type="button"
+              onClick={() => { setQuery(""); router.replace("/trees", { scroll: false }); setShown(PAGE); }}
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-transparent px-3 text-xs font-semibold text-primary-ink underline-offset-2 hover:underline sm:min-h-8"
+            >
+              ✕ {tr("clearFilter")}
+            </button>
+          )}
+        </div>
       </div>
 
+      {trees.isError && !trees.data && <ErrorState error={trees.error} onRetry={() => trees.refetch()} />}
+      {trees.isPending && (
+        <div className="space-y-2">{[1, 2, 3, 4].map((i) => <div key={i} className="h-20 animate-pulse rounded-lg bg-surface-alt" />)}</div>
+      )}
+
+      {trees.data && filtered.length === 0 && (
+        <div className="rounded-lg border border-line bg-surface p-8 text-center text-muted">{tr("noTreesFound")}</div>
+      )}
+
+      {/* Mobile: cards */}
+      <ul className="space-y-2 sm:hidden">
+        {page.map((tree) => (
+          <li key={tree.tree_id} className="relative">
+            <Link href={`/trees/${tree.tree_id}`} className="block rounded-lg border border-line bg-surface p-4 pr-16 active:bg-surface-alt">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-mono font-semibold text-ink">{tree.tree_id}</p>
+                <TreeHealthBadge openAlerts={tree.open_alerts} hasTier1Alert={tree.has_tier1_alert} />
+              </div>
+              <p className="text-xs text-muted">{zoneKey(tree.zone, tree.side)} · {varietyName(tree.variety, lang)}</p>
+              <p className="mt-1 text-xs text-muted">{tr("lastLogLabel")}: <LastLog tree={tree} /></p>
+            </Link>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2">
+              <TreeQrDownloadButton treeId={tree.tree_id} qrCode={tree.qr_code} />
+            </span>
+          </li>
+        ))}
+      </ul>
+
       {/* Desktop: table */}
-      <div className="hidden overflow-hidden rounded-lg bg-surface border border-line sm:block">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-line text-left text-xs text-muted">
-              <th className="px-4 py-3 font-semibold"><T k="colTreeIdLabel" /></th>
-              <th className="px-4 py-3 font-semibold"><T k="zoneLabel" /></th>
-              <th className="px-4 py-3 font-semibold"><T k="colVariety" /></th>
-              <th className="px-4 py-3 font-semibold"><T k="colHealth" /></th>
-              <th className="px-4 py-3 font-semibold"><T k="recentLogsTitle" /></th>
-              <th className="px-4 py-3 font-semibold"><T k="navAlerts" /></th>
-              <th className="px-4 py-3 font-semibold"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {trees?.map((tree) => (
-              <tr key={tree.tree_id} className="border-b border-line last:border-0 hover:bg-surface-alt">
-                <td className="px-4 py-3">
-                  <Link href={`/trees/${tree.tree_id}`} className="font-mono font-semibold text-ink">
-                    {tree.tree_id}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-muted">{tree.zone}{tree.side}</td>
-                <td className="px-4 py-3 text-muted"><VarietyName variety={tree.variety} /></td>
-                <td className={`px-4 py-3 font-semibold ${healthColor(Number(tree.derived_health_score))}`}>
-                  {Math.round(Number(tree.derived_health_score) * 100)}%
-                </td>
-                <td className="px-4 py-3 text-muted">
-                  {daysSinceLastLog(tree.derived_last_updated) !== null
-                    ? <>{daysSinceLastLog(tree.derived_last_updated)} <T k="daysAgoSuffix" /></>
-                    : <T k="neverLoggedYet" />}
-                </td>
-                <td className="px-4 py-3">
-                  {Number(tree.derived_open_alerts) > 0 ? (
-                    <span className="rounded-full bg-warning-tint px-2 py-0.5 text-xs font-semibold text-warning-ink">
-                      {tree.derived_open_alerts}
-                    </span>
-                  ) : (
-                    <span className="text-muted">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <TreeQrDownloadButton treeId={tree.tree_id} qrCode={tree.qr_code} />
-                </td>
+      {page.length > 0 && (
+        <div className="hidden overflow-hidden rounded-lg border border-line bg-surface sm:block">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line text-left text-xs text-muted">
+                <th className="px-4 py-3 font-semibold">{tr("colTreeIdLabel")}</th>
+                <th className="px-4 py-3 font-semibold">{tr("zoneLabel")}</th>
+                <th className="px-4 py-3 font-semibold">{tr("colVariety")}</th>
+                <th className="px-4 py-3 font-semibold">
+                  <span className="inline-flex items-center gap-1">{tr("colHealth")} <InfoTip text={tr("help_health")} /></span>
+                </th>
+                <th className="px-4 py-3 font-semibold">{tr("lastLogLabel")}</th>
+                <th className="px-4 py-3 font-semibold">{tr("setsTitle")}</th>
+                <th className="px-4 py-3 font-semibold"><span className="sr-only">QR</span></th>
               </tr>
-            ))}
-            {(!trees || trees.length === 0) && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted"><T k="noTreesFound" /></td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {page.map((tree) => (
+                <tr key={tree.tree_id} className="border-b border-line last:border-0 hover:bg-surface-alt">
+                  <td className="px-4 py-3">
+                    <Link href={`/trees/${tree.tree_id}`} className="font-mono font-semibold text-ink hover:underline">{tree.tree_id}</Link>
+                  </td>
+                  <td className="px-4 py-3 text-muted">{zoneKey(tree.zone, tree.side)}</td>
+                  <td className="px-4 py-3 text-muted">{varietyName(tree.variety, lang)}</td>
+                  <td className="px-4 py-3"><TreeHealthBadge openAlerts={tree.open_alerts} hasTier1Alert={tree.has_tier1_alert} /></td>
+                  <td className="px-4 py-3 text-muted"><LastLog tree={tree} /></td>
+                  <td className="px-4 py-3 text-muted">{tree.open_sets || "—"}</td>
+                  <td className="px-4 py-3"><TreeQrDownloadButton treeId={tree.tree_id} qrCode={tree.qr_code} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {filtered.length > shown && (
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <p className="text-xs text-muted">{tr("showingCount", { shown: page.length, total: filtered.length })}</p>
+          <button
+            type="button"
+            onClick={() => setShown((n) => n + PAGE)}
+            className="inline-flex min-h-11 items-center rounded-lg border border-line bg-surface px-5 text-sm font-semibold text-body"
+          >
+            {tr("loadMore")}
+          </button>
+        </div>
+      )}
     </div>
   );
+}
+
+function LastLog({ tree }: { tree: TreeRow }) {
+  const { tr } = useT();
+  const d = daysSince(tree.last_log_at);
+  return <>{d === null ? tr("neverLoggedYet") : `${d} ${tr("daysAgoSuffix")}`}</>;
 }

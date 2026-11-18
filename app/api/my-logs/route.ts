@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireWorker } from "@/lib/auth/requireWorker";
+import { requireWorker } from "@/lib/auth/gate";
 import type { DbTaskLog } from "@/types/database";
 
 // GET /api/my-logs — the calling worker's own submitted records (audit log), one
@@ -25,7 +25,7 @@ export async function GET() {
 
   if (error) {
     console.error("my-logs list error:", error);
-    return NextResponse.json({ error: "Failed to load logs" }, { status: 500 });
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 
   const rootIds = (roots ?? []).map((r) => r.log_id);

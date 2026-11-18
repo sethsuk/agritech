@@ -1,29 +1,16 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { ManagerBottomNav } from "@/components/manager/ManagerBottomNav";
+import { getSession, isStaff } from "@/lib/auth/gate";
+import { ManagerBottomNav, ManagerTopNavLinks } from "@/components/manager/ManagerBottomNav";
 import { LogoutButton } from "@/components/manager/LogoutButton";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { T } from "@/components/T";
 
 export default async function ManagerLayout({ children }: { children: ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  const admin = createAdminClient();
-  const { data: profile } = await admin
-    .from("users")
-    .select("role, display_name")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "manager" && profile.role !== "owner")) {
-    redirect("/scan");
-  }
+  const me = await getSession();
+  if (!me) redirect("/login");
+  if (!isStaff(me.role)) redirect("/scan");
+  if (!me.active) redirect("/login?reason=inactive");
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-alt">
@@ -36,21 +23,13 @@ export default async function ManagerLayout({ children }: { children: ReactNode 
             <span>🌳</span>
             <span className="hidden sm:inline"><T k="loginTitle" /></span>
           </span>
-          <div className="hidden gap-4 sm:flex">
-            <Link href="/dashboard" className="text-sm text-body hover:text-primary-ink"><T k="navOverview" /></Link>
-            <Link href="/alerts"    className="text-sm text-body hover:text-primary-ink"><T k="navAlerts" /></Link>
-            <Link href="/workers"   className="text-sm text-body hover:text-primary-ink"><T k="navWorkers" /></Link>
-            <Link href="/trees"     className="text-sm text-body hover:text-primary-ink"><T k="navTrees" /></Link>
-            {profile.role === "owner" && (
-              <Link href="/managers" className="text-sm text-body hover:text-primary-ink"><T k="navManagers" /></Link>
-            )}
-          </div>
+          <ManagerTopNavLinks isOwner={me.role === "owner"} />
           <div className="ml-auto flex items-center gap-3 sm:gap-4">
             <LanguageToggle />
             {/* Name is the least load-bearing item here — drop it on mobile so the
                 toggle and logout stay on one line. */}
             <span className="hidden whitespace-nowrap text-sm text-muted sm:inline">
-              {profile.display_name}
+              {me.displayName}
             </span>
             <LogoutButton />
           </div>
@@ -58,9 +37,10 @@ export default async function ManagerLayout({ children }: { children: ReactNode 
       </nav>
 
       {/* Extra bottom padding on mobile so content clears the bottom tab bar */}
-      <main className="flex-1 pb-20 sm:pb-0">{children}</main>
+      {/* Bottom padding clears the fixed mobile tab bar plus the iPhone home-indicator inset. */}
+      <main className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-0">{children}</main>
 
-      <ManagerBottomNav isOwner={profile.role === "owner"} />
+      <ManagerBottomNav isOwner={me.role === "owner"} />
     </div>
   );
 }

@@ -31,6 +31,8 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
   const initialValue = default_value !== undefined ? default_value : min;
   // draft holds the raw string while the user is mid-edit; null means "show parent value"
   const [draft, setDraft] = useState<string | null>(null);
+  // Shown when a typed value was outside min/max — it used to revert silently.
+  const [rangeNotice, setRangeNotice] = useState(false);
 
   function decrement() {
     setDraft(null);
@@ -62,13 +64,16 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
   function commitDraft() {
     if (draft === null) return;
     const n = parseFloat(draft);
-    if (!isNaN(n) && n >= min && n <= max) onChange(stepped(n, 0, step));
+    const ok = !isNaN(n) && n >= min && n <= max;
+    if (ok) onChange(stepped(n, 0, step));
+    setRangeNotice(!ok && draft.trim() !== "");
     setDraft(null);
   }
 
   const displayValue = draft !== null ? draft : value !== null ? String(value) : "";
 
   return (
+    <div>
     <div className="flex items-center gap-3">
       <button
         type="button"
@@ -76,7 +81,8 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
         disabled={value === null || value <= min}
         className="flex h-15 w-15 items-center justify-center rounded-lg border border-line bg-surface-alt text-2xl font-bold text-body active:bg-surface-press disabled:opacity-30"
       >
-        −
+        <span aria-hidden>−</span>
+        <span className="sr-only">−{step}</span>
       </button>
 
       {value === null && draft === null ? (
@@ -94,7 +100,8 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
           min={min}
           max={max}
           step={step}
-          onChange={(e) => setDraft(e.target.value)}
+          inputMode={Number.isInteger(step) ? "numeric" : "decimal"}
+          onChange={(e) => { setDraft(e.target.value); setRangeNotice(false); }}
           onBlur={commitDraft}
           className="h-15 w-28 rounded-lg border border-line text-center text-2xl font-bold text-ink focus:border-primary focus:outline-none [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
         />
@@ -108,8 +115,15 @@ export function NumericCounter({ value, min = 0, max = 9999, default_value, step
         // pair stays distinguishable in direct sunlight where two pale fills would not.
         className="flex h-15 w-15 items-center justify-center rounded-lg bg-primary text-2xl font-bold text-white active:bg-primary-press disabled:opacity-30"
       >
-        +
+        <span aria-hidden>+</span>
+        <span className="sr-only">+{step}</span>
       </button>
+    </div>
+    {rangeNotice && (
+      <p role="alert" className="mt-2 text-base font-semibold text-warning-ink">
+        {t(dict.numberRangeNotice, lang).replace("{min}", String(min)).replace("{max}", String(max))}
+      </p>
+    )}
     </div>
   );
 }

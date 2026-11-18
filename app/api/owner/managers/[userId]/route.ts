@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireOwner } from "@/lib/auth/requireStaff";
+import { requireOwner } from "@/lib/auth/gate";
 
 // PATCH /api/owner/managers/:userId — deactivate/reactivate a manager account. Owner only.
 
@@ -21,14 +21,14 @@ export async function PATCH(
   const body = await request.json().catch(() => null);
   const parsed = PatchSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 
   // Only ever touch manager accounts through this endpoint — never an owner (including
   // the caller themselves), even if someone guesses another owner's id.
   const { data: target } = await admin.from("users").select("role").eq("id", userId).single();
   if (!target || target.role !== "manager") {
-    return NextResponse.json({ error: "Manager not found" }, { status: 404 });
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
   const { active } = parsed.data;
@@ -36,7 +36,7 @@ export async function PATCH(
     ban_duration: active ? "none" : "876000h",
   });
   if (banErr) {
-    return NextResponse.json({ error: "Failed to update manager" }, { status: 500 });
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

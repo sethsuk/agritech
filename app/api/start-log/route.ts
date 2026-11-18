@@ -1,110 +1,103 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { signToken } from "@/lib/logToken";
-import type { DbWorker, DbTaskDefinition, PhotoRequirementReason, WorkerTrustTier } from "@/types/database";
+import { requireWorker } from "@/lib/auth/gate";
+import { randomUUID } from "crypto";
+import { signToken, verifyToken, type LogTokenPayload } from "@/lib/logToken";
+import { photoDecisionFor } from "@/lib/photoAudit";
+import type { DbWorker, DbTaskDefinition, WorkerTrustTier } from "@/types/database";
 
 const BodySchema = z.object({
   treeId: z.string(),
   taskDefId: z.string(),
   qrScannedAt: z.string().datetime(),
+  /** The form's previous token (expired, or from a restored draft) — see renewal below. */
+  previousToken: z.string().optional(),
 });
 
 const TOKEN_TTL_MINUTES = 60;
-
-// Photo audit sampling rate per worker trust tier. Deployment config, not domain data —
-// tune without a DB write. Defaults match the original design doc.
-function auditRateFor(tier: WorkerTrustTier): number {
-  const fromEnv = {
-    trusted: process.env.PHOTO_AUDIT_RATE_TRUSTED,
-    standard: process.env.PHOTO_AUDIT_RATE_STANDARD,
-    audit: process.env.PHOTO_AUDIT_RATE_AUDIT,
-  }[tier];
-  const fallback = { trusted: 0.01, standard: 0.05, audit: 0.15 }[tier];
-  const parsed = Number(fromEnv);
-  return fromEnv !== undefined && !isNaN(parsed) ? parsed : fallback;
-}
+/** How long after first opening a form its token can still be renewed. */
+const RENEW_WINDOW_HOURS = 12;
 
 /**
  * POST /api/start-log
  *
- * Called when a worker opens a task form (after QR scan).
- * Server decides photo_required and returns a signed token.
- * The token must accompany the submit-log call.
+ * Called when a worker opens a task form (after QR scan). The server decides
+ * photo_required and returns a signed token binding that decision, the form-open time
+ * and the QR-scan time. The token must accompany the submit-log call.
  */
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const gate = await requireWorker(); // also refuses deactivated workers
+  if (!gate.ok) return gate.response;
+  const { admin, userId } = gate;
 
   const body = await request.json().catch(() => null);
   const parsed = BodySchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
+  const { treeId, taskDefId } = parsed.data;
 
-  const { treeId, taskDefId, qrScannedAt } = parsed.data;
-  const admin = createAdminClient();
-
-  // Fetch task definition
-  const { data: taskDef, error: tdErr } = await admin
-    .from("task_definitions")
-    .select("*")
-    .eq("task_def_id", taskDefId)
-    .eq("active", true)
-    .single<DbTaskDefinition>();
-  if (tdErr || !taskDef) {
-    return NextResponse.json({ error: "Task definition not found" }, { status: 404 });
-  }
-
-  const { data: worker } = await admin
-    .from("workers")
-    .select("trust_tier")
-    .eq("worker_id", user.id)
-    .single<Pick<DbWorker, "trust_tier">>();
+  const [{ data: taskDef }, { data: tree }, { data: worker }] = await Promise.all([
+    admin.from("task_definitions").select("*").eq("task_def_id", taskDefId).eq("active", true)
+      .maybeSingle<DbTaskDefinition>(),
+    admin.from("trees").select("tree_id").eq("tree_id", treeId).eq("status", "active").maybeSingle(),
+    admin.from("workers").select("trust_tier").eq("worker_id", userId)
+      .maybeSingle<Pick<DbWorker, "trust_tier">>(),
+  ]);
+  if (!taskDef) return NextResponse.json({ error: "task_not_found" }, { status: 404 });
+  if (!tree) return NextResponse.json({ error: "tree_not_found" }, { status: 404 });
 
   // Least-trusted default: an unknown/missing worker row gets the highest audit rate.
   const trustTier: WorkerTrustTier = worker?.trust_tier ?? "audit";
 
-  // Decide photo requirement
-  let photoRequired = false;
-  let photoRequirementReason: PhotoRequirementReason = "none";
-  let auditSeed = "";
+  // Deterministic per worker/tree/task/day — reopening the form can't reroll it.
+  const { photoRequired, photoRequirementReason, auditSeed } = photoDecisionFor(
+    taskDef.photo_policy_mode,
+    trustTier,
+    { workerId: userId, treeId, taskDefId },
+    process.env.SKIP_VALIDATION === "true",
+  );
 
-  const skipValidation = process.env.SKIP_VALIDATION === "true";
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + TOKEN_TTL_MINUTES * 60 * 1000).toISOString();
 
-  if (!skipValidation) {
-    if (taskDef.photo_policy_mode === "always") {
-      photoRequired = true;
-      photoRequirementReason = "task_default";
-    } else if (taskDef.photo_policy_mode === "audit_only") {
-      auditSeed = Math.random().toString(36).slice(2);
-      const roll = parseInt(auditSeed, 36) / Math.pow(36, auditSeed.length);
-      photoRequired = roll < auditRateFor(trustTier);
-      photoRequirementReason = photoRequired ? "random_audit" : "none";
-    }
-  }
+  // Renewal: an expired (or draft-restored) token for the SAME worker, tree and task keeps
+  // its original form-open / QR-scan times, photo decision and submission id. A fresh
+  // formOpenedAt would make a worker whose fields are already filled in look like they
+  // completed the task in seconds (completion_too_fast), and a fresh submission id would
+  // defeat duplicate protection if the first attempt actually went through.
+  const prev = parsed.data.previousToken ? verifyToken(parsed.data.previousToken, { allowExpired: true }) : null;
+  const renewable: LogTokenPayload | null =
+    prev?.ok &&
+    prev.payload.workerId === userId && prev.payload.treeId === treeId && prev.payload.taskDefId === taskDefId &&
+    now.getTime() - Date.parse(prev.payload.formOpenedAt) < RENEW_WINDOW_HOURS * 3_600_000
+      ? prev.payload
+      : null;
 
-  const formOpenedAt = new Date().toISOString();
-  const expiresAt = new Date(Date.now() + TOKEN_TTL_MINUTES * 60 * 1000).toISOString();
-
-  const token = signToken({
-    workerId: user.id,
-    treeId,
-    taskDefId,
-    photoRequired,
-    photoRequirementReason,
-    auditSeed,
-    formOpenedAt,
-    expiresAt,
-  });
+  // A scan time in the future (clock skew, tampering) is clamped to now.
+  const scanned = new Date(parsed.data.qrScannedAt);
+  const payload: LogTokenPayload = renewable
+    ? { ...renewable, expiresAt }
+    : {
+        workerId: userId,
+        treeId,
+        taskDefId,
+        photoRequired,
+        photoRequirementReason,
+        auditSeed,
+        formOpenedAt: now.toISOString(),
+        qrScannedAt: (scanned > now ? now : scanned).toISOString(),
+        submissionId: randomUUID(),
+        expiresAt,
+      };
+  const token = signToken(payload);
 
   return NextResponse.json({
     logToken: token,
-    photoRequired,
-    photoRequirementReason,
-    formOpenedAt,
+    photoRequired: payload.photoRequired,
+    photoRequirementReason: payload.photoRequirementReason,
+    formOpenedAt: payload.formOpenedAt,
     workerTrustTier: trustTier,
+    renewed: renewable !== null,
   });
 }

@@ -1,4 +1,4 @@
--- Six task definitions for the pilot.
+-- Seven task definitions for the pilot.
 -- Applied automatically by scripts/migrate.ts after the migrations run.
 --
 -- `fields` stays JSONB on purpose: each task type has a structurally different set
@@ -91,29 +91,43 @@ VALUES
  ]'
 ),
 
--- 6. Harvest logging
+-- 6. Fruit-count check — repeatable recount of the fruit still on a set. Accounts for
+--    flowers that never set fruit and fruit that drops later; the server rejects a count
+--    higher than what should remain (fruit drops, it doesn't appear).
+('fruit_count_v1', 'fruit_check',
+ 'นับผลที่ติด', 'အသီးအရေအတွက် စစ်ဆေးခြင်း', 'Fruit count check', '🔢',
+ 'never', TRUE, 10, 20,
+ '[
+   {"field_id":"set_id","type":"set_picker","label_icon":"🎗️",
+    "label":{"th":"เลือกชุด (สีเชือก)","my":"အစု ရွေးပါ (ကြိုးအရောင်)","en":"Choose set (ribbon)"},
+    "required":true},
+   {"field_id":"fruit_count","type":"numeric_counter","label_icon":"🥭",
+    "label":{"th":"จำนวนผลที่เหลือบนต้น","my":"ပင်ပေါ်ရှိ အသီးအရေအတွက်","en":"Fruit still on the tree"},
+    "required":true,"min":0,"max":500,"step":1}
+ ]'
+),
+
+-- 7. Harvest logging — always against one of the tree's open sets.
 ('harvest_log_v1', 'harvest',
  'บันทึกการเก็บเกี่ยว', 'ရိတ်သိမ်းမှတ်တမ်း', 'Harvest logging', '🛒',
  'never', TRUE, 20, 30,
  '[
-   {"field_id":"set_color","type":"color_picker","label_icon":"🎨",
-    "label":{"th":"สีชุด","my":"အရောင်","en":"Set color"},
-    "required":true,
-    "options":[
-      {"value":"red","icon":"🔴","label":{"th":"แดง","my":"အနီ","en":"Red"}},
-      {"value":"blue","icon":"🔵","label":{"th":"น้ำเงิน","my":"အပြာ","en":"Blue"}},
-      {"value":"yellow","icon":"🟡","label":{"th":"เหลือง","my":"အဝါ","en":"Yellow"}},
-      {"value":"white","icon":"⚪","label":{"th":"ขาว","my":"အဖြူ","en":"White"}}
-    ]},
+   {"field_id":"set_id","type":"set_picker","label_icon":"🎗️",
+    "label":{"th":"เลือกชุด (สีเชือก)","my":"အစု ရွေးပါ (ကြိုးအရောင်)","en":"Choose set (ribbon)"},
+    "required":true},
    {"field_id":"grade_counts","type":"grade_counter","label_icon":"🥭",
     "label":{"th":"จำนวนผลตามเกรด","my":"အဆင့်အလိုက် အသီးအရေအတွက်","en":"Fruit count by grade"},
-    "required":true,"min":0,"max":200,"step":1,
+    "required":true,"required_unless":"final_pick","min":0,"max":200,"step":1,
     "options":[
       {"value":"A","icon":"🥇","label":{"th":"A","my":"A","en":"A"}},
       {"value":"B","icon":"🥈","label":{"th":"B","my":"B","en":"B"}},
       {"value":"C","icon":"🥉","label":{"th":"C","my":"C","en":"C"}},
       {"value":"reject","icon":"❌","label":{"th":"ไม่ผ่าน","my":"ပယ်ဖျက်","en":"Reject"}}
-    ]}
+    ]},
+   {"field_id":"final_pick","type":"toggle","label_icon":"🏁",
+    "label":{"th":"เก็บครั้งสุดท้ายของชุดนี้","my":"ဤအစု၏ နောက်ဆုံးခူးခြင်း","en":"Last pick for this set"},
+    "hint":{"th":"ผลที่เหลือจะนับเป็นผลที่เสียไป และปิดชุดนี้","my":"ကျန်ရှိသော အသီးများကို ဆုံးရှုံးမှုအဖြစ် မှတ်ပြီး အစုကို ပိတ်မည်","en":"Any fruit left is counted as lost and the set is closed"},
+    "required":false}
  ]'
 )
 
