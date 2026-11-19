@@ -341,3 +341,13 @@ Change them with `replaceQuery()` (`lib/client/replaceQuery.ts`, native `history
 never `router.replace`: that is a navigation, and refetched the page from the server on every tap.
 Shared form pieces: `components/FormField.tsx` (label + red `*` + hint/error),
 `components/InfoTip.tsx` (ⓘ tap-to-explain — phones have no hover), `components/QueryState.tsx`.
+Period and zone filters use `PeriodBar` / `ZonePills` (`components/manager/FilterGroups.tsx`) —
+deliberately different shapes with 📅 / 📍 labels, because identical chip rows read as one choice.
+
+### Deployment (Vercel)
+
+Pushing to `main` deploys production; any other branch deploys a preview (Vercel Authentication
+required to view). Production uses the prod Supabase project (Singapore), previews the dev one
+(Ohio). `vercel.ts` puts the functions next to each: `sin1` for production, `cle1` for previews —
+every request makes several Supabase round trips, so the function region must match the DB's.
+Analytics and Speed Insights are mounted in `app/layout.tsx`.

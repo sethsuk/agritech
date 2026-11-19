@@ -48,6 +48,7 @@
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
     "@types/ws": "^8.18.1",
+    "@vercel/config": "^0.14.1",
     "dotenv": "^17.4.2",
     "eslint": "^9.39.5",
     "eslint-config-next": "15.5",
