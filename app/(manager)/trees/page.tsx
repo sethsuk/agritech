@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { replaceQuery } from "@/lib/client/replaceQuery";
 import { useT } from "@/lib/i18n/LanguageContext";
 import { useTrees, useOverview, type TreeRow } from "@/lib/client/queries";
+import { ZonePills } from "@/components/manager/FilterGroups";
 import { parseZoneKey, zoneKey } from "@/lib/treeId";
 import { daysSince } from "@/lib/time";
 import { chipClass } from "@/lib/ui/badges";
@@ -91,7 +92,7 @@ function Trees() {
         </Link>
       </div>
 
-      <div className="mb-4 space-y-2">
+      <div className="mb-4 space-y-3">
         <label htmlFor="tree-search" className="sr-only">{tr("searchTreePlaceholder")}</label>
         <input
           id="tree-search"
@@ -103,15 +104,8 @@ function Trees() {
           placeholder={tr("searchTreePlaceholder")}
           className="h-11 w-full rounded-lg border border-line bg-surface px-3 text-base text-ink sm:max-w-sm"
         />
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label={tr("zoneLabel")}>
-          <button type="button" aria-pressed={zone === null} onClick={() => setParam("zone", null)} className={chipClass(zone === null)}>
-            {tr("filterZoneAll")}
-          </button>
-          {zones.map((z) => (
-            <button key={z} type="button" aria-pressed={zone === z} onClick={() => setParam("zone", z)} className={chipClass(zone === z)}>
-              {z}
-            </button>
-          ))}
+        <ZonePills label={tr("zoneLabel")} allLabel={tr("filterZoneAll")} zones={zones} value={zone} onChange={(z) => setParam("zone", z)} />
+        <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1">
             <button type="button" aria-pressed={staleOnly} onClick={() => setParam("stale", staleOnly ? null : "1")} className={chipClass(staleOnly)}>
               {tr("statStaleTrees", { n: staleDays })}
