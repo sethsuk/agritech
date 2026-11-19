@@ -2,7 +2,8 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { replaceQuery } from "@/lib/client/replaceQuery";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n/LanguageContext";
@@ -40,7 +41,6 @@ export default function AlertsPage() {
  */
 function Alerts() {
   const { lang, tr } = useT();
-  const router = useRouter();
   const params = useSearchParams();
   const queryClient = useQueryClient();
   const alerts = useAlerts();
@@ -51,7 +51,7 @@ function Alerts() {
   const setParam = (key: string, value: string | null) => {
     const qs = new URLSearchParams(params);
     if (value) qs.set(key, value); else qs.delete(key);
-    router.replace(`/alerts?${qs}`, { scroll: false });
+    replaceQuery(qs);
   };
 
   const update = useMutation({

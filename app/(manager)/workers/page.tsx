@@ -2,7 +2,8 @@
 
 import { Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { replaceQuery } from "@/lib/client/replaceQuery";
 import { useT } from "@/lib/i18n/LanguageContext";
 import { useWorkers, type WorkerRow } from "@/lib/client/queries";
 import { formatAvgCompletion, formatFlagRate, type ReliabilityWindow } from "@/lib/derived/reliability";
@@ -25,7 +26,6 @@ export default function WorkersPage() {
  */
 function Workers() {
   const { tr } = useT();
-  const router = useRouter();
   const params = useSearchParams();
   const workers = useWorkers();
   const showInactive = params.get("inactive") === "1";
@@ -50,10 +50,10 @@ function Workers() {
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
-        <button type="button" aria-pressed={!showInactive} onClick={() => router.replace("/workers", { scroll: false })} className={chipClass(!showInactive)}>
+        <button type="button" aria-pressed={!showInactive} onClick={() => replaceQuery("")} className={chipClass(!showInactive)}>
           {tr("filterActive")}
         </button>
-        <button type="button" aria-pressed={showInactive} onClick={() => router.replace("/workers?inactive=1", { scroll: false })} className={chipClass(showInactive)}>
+        <button type="button" aria-pressed={showInactive} onClick={() => replaceQuery("inactive=1")} className={chipClass(showInactive)}>
           {tr("filterInactive")}{workers.data ? ` (${inactiveCount})` : ""}
         </button>
       </div>

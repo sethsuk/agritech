@@ -337,5 +337,7 @@ Three languages (`th` default, `my` Burmese, `en`). `lib/i18n/t.ts` resolves an 
 manager has a top nav plus a mobile bottom nav, both rendered from the one tab list in
 `components/manager/ManagerBottomNav.tsx`. Manager pages are client components on the query
 hooks; filters live in the URL (`?zone=AL&range=week`), so Back and shared links keep the view.
+Change them with `replaceQuery()` (`lib/client/replaceQuery.ts`, native `history.replaceState`),
+never `router.replace`: that is a navigation, and refetched the page from the server on every tap.
 Shared form pieces: `components/FormField.tsx` (label + red `*` + hint/error),
 `components/InfoTip.tsx` (ⓘ tap-to-explain — phones have no hover), `components/QueryState.tsx`.

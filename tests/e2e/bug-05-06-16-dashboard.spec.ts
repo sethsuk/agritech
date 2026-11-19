@@ -8,9 +8,11 @@ test.beforeEach(async ({ page }) => {
   await page.waitForLoadState("networkidle");
 });
 
-test("bug 5 — switching time range and zone makes no further API requests", async ({ page }) => {
-  const apiCalls: string[] = [];
-  page.on("request", (r) => { if (r.url().includes("/api/manager/")) apiCalls.push(r.url()); });
+// Any request at all — not just /api/. `router.replace` refetched the page's server
+// payload (`?_rsc=…`) on every tap, which made the filters lag on a phone.
+test("bug 5 — switching time range and zone makes no requests of any kind", async ({ page }) => {
+  const requests: string[] = [];
+  page.on("request", (r) => requests.push(`${r.method()} ${r.url()}`));
 
   for (const key of ["rangeToday", "rangeMonth", "rangeYear", "rangeAll", "rangeWeek"] as const) {
     await page.getByRole("button", { name: th(key), exact: true }).click();
@@ -18,9 +20,35 @@ test("bug 5 — switching time range and zone makes no further API requests", as
   }
   await page.getByRole("button", { name: "AL", exact: true }).click();
   await page.getByRole("button", { name: "AR", exact: true }).click();
+  await expect(page).toHaveURL(/zone=AR/);
   await page.getByRole("button", { name: th("filterZoneAll") }).click();
+  await expect(page).not.toHaveURL(/zone=/);
 
-  expect(apiCalls).toEqual([]);
+  expect(requests).toEqual([]);
+
+  // The URL still holds the view: a reload comes back to it.
+  await page.getByRole("button", { name: th("rangeMonth"), exact: true }).click();
+  await page.reload();
+  await expect(page.getByRole("button", { name: th("rangeMonth"), exact: true })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("bug 5 — Trees filters are instant and survive opening a tree and going Back", async ({ page }) => {
+  await page.goto("/trees");
+  await expect(page.getByRole("button", { name: "AL", exact: true })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+
+  const requests: string[] = [];
+  page.on("request", (r) => requests.push(`${r.method()} ${r.url()}`));
+  await page.getByRole("button", { name: "AR", exact: true }).click();
+  await expect(page.getByRole("button", { name: "AR", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL(/\/trees\?zone=AR/);
+  expect(requests).toEqual([]);
+
+  await page.getByRole("link", { name: /AR1-1\b/ }).first().click();
+  await expect(page).toHaveURL(/\/trees\/AR1-1$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/trees\?zone=AR/);
+  await expect(page.getByRole("button", { name: "AR", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
 
 test("bug 6 — tapping ⓘ explains 'trees not checked' and 'sets past harvest window'", async ({ page }) => {

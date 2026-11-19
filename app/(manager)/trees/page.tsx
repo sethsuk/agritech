@@ -2,7 +2,8 @@
 
 import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { replaceQuery } from "@/lib/client/replaceQuery";
 import { useT } from "@/lib/i18n/LanguageContext";
 import { useTrees, useOverview, type TreeRow } from "@/lib/client/queries";
 import { parseZoneKey, zoneKey } from "@/lib/treeId";
@@ -31,7 +32,6 @@ export default function TreesPage() {
  */
 function Trees() {
   const { lang, tr } = useT();
-  const router = useRouter();
   const params = useSearchParams();
   const trees = useTrees();
   // Only for staleDays, which the dashboard snapshot already carries (cached).
@@ -48,7 +48,7 @@ function Trees() {
     const qs = new URLSearchParams(params);
     if (value) qs.set(key, value); else qs.delete(key);
     setShown(PAGE);
-    router.replace(`/trees?${qs}`, { scroll: false });
+    replaceQuery(qs);
   };
   const filtersActive = zone !== null || staleOnly || showRetired || query !== "";
 
@@ -126,7 +126,7 @@ function Trees() {
             // with them vertically — it used to be a bare padded link that sat high.
             <button
               type="button"
-              onClick={() => { setQuery(""); router.replace("/trees", { scroll: false }); setShown(PAGE); }}
+              onClick={() => { setQuery(""); replaceQuery(""); setShown(PAGE); }}
               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-transparent px-3 text-xs font-semibold text-primary-ink underline-offset-2 hover:underline sm:min-h-8"
             >
               ✕ {tr("clearFilter")}

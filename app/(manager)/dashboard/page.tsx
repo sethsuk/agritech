@@ -2,7 +2,8 @@
 
 import { Suspense, useMemo } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { replaceQuery } from "@/lib/client/replaceQuery";
 import { useT } from "@/lib/i18n/LanguageContext";
 import { alertSubtypeLabel, colorName, COLOR_ICON, flagLabel, taskLabel } from "@/lib/i18n/labels";
 import { useOverview, useTaskDefs, type Overview } from "@/lib/client/queries";
@@ -33,7 +34,6 @@ export default function DashboardPage() {
  */
 function Dashboard() {
   const { lang, tr } = useT();
-  const router = useRouter();
   const params = useSearchParams();
   const overview = useOverview();
   const taskDefs = useTaskDefs();
@@ -48,7 +48,7 @@ function Dashboard() {
     if (next.zone) qs.set("zone", next.zone);
     else if (next.zone === null) qs.delete("zone");
     if (next.range) qs.set("range", next.range);
-    router.replace(`/dashboard?${qs}`, { scroll: false });
+    replaceQuery(qs);
   };
 
   const view = useMemo(() => (overview.data ? select(overview.data, zone, range) : null), [overview.data, zone, range]);

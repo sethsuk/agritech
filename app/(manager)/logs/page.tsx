@@ -2,7 +2,8 @@
 
 import { Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { replaceQuery } from "@/lib/client/replaceQuery";
 import { useT } from "@/lib/i18n/LanguageContext";
 import { flagLabel, sortTaskDefs, taskLabel, validationStatusLabel } from "@/lib/i18n/labels";
 import { taskDisplayName } from "@/lib/i18n/t";
@@ -33,7 +34,6 @@ export default function LogsPage() {
  */
 function Logs() {
   const { lang, tr } = useT();
-  const router = useRouter();
   const params = useSearchParams();
   const taskDefs = useTaskDefs();
   const workers = useWorkers();
@@ -55,7 +55,7 @@ function Logs() {
     const qs = new URLSearchParams(params);
     if (value) qs.set(key, value); else qs.delete(key);
     if (key !== "page") qs.delete("page");
-    router.replace(`/logs?${qs}`, { scroll: key === "page" });
+    replaceQuery(qs, { scrollTop: key === "page" });
   };
 
   const totalPages = logs.data ? Math.max(1, Math.ceil(logs.data.total / logs.data.pageSize)) : 1;
