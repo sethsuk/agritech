@@ -3,22 +3,37 @@ import { admin, freshTree, loginAs, th } from "./helpers";
 
 test.beforeEach(async ({ page }) => { await loginAs(page, "manager"); });
 
-test("bug 10 — 'clear filter' lines up vertically with the zone chips", async ({ page }) => {
+test("bug 10 — 'clear filter' lines up vertically with the filter chips beside it", async ({ page }) => {
   await page.goto("/trees?zone=AL");
-  const chip = page.getByRole("button", { name: "AL", exact: true });
+  // Zones sit in their own labelled row; "clear" shares the row of the other toggles.
+  await expect(page.getByRole("group", { name: th("zoneLabel") }).getByRole("button", { name: "AL", exact: true }))
+    .toHaveAttribute("aria-pressed", "true");
+  const chip = page.getByRole("button", { name: th("retiredBadge"), exact: true });
   const clear = page.getByRole("button", { name: new RegExp(th("clearFilter")) });
   await expect(clear).toBeVisible();
   const a = (await chip.boundingBox())!;
   const b = (await clear.boundingBox())!;
   // Same box height as the chips…
   expect(Math.abs(a.height - b.height)).toBeLessThanOrEqual(1);
-  // …and centred on whichever chip shares its row (on a narrow phone it may wrap).
-  const centers = await page.getByRole("group", { name: th("zoneLabel") }).getByRole("button").evaluateAll(
-    (els) => els.map((e) => { const r = e.getBoundingClientRect(); return { text: e.textContent ?? "", c: r.top + r.height / 2 }; }),
-  );
-  const mine = b.y + b.height / 2;
-  const sameRow = centers.filter((x) => !x.text.includes("✕") && Math.abs(x.c - mine) < a.height / 2);
-  for (const x of sameRow) expect(Math.abs(x.c - mine)).toBeLessThanOrEqual(1);
+  // …and centred on the same line, unless a narrow phone wrapped it to the next row.
+  const sameRow = Math.abs(a.y + a.height / 2 - (b.y + b.height / 2)) < a.height / 2;
+  if (sameRow) expect(Math.abs(a.y + a.height / 2 - (b.y + b.height / 2))).toBeLessThanOrEqual(1);
+});
+
+test("period and zone filters look different and are labelled", async ({ page }) => {
+  await page.goto("/dashboard");
+  const period = page.getByRole("group", { name: th("filterRange") });
+  const zones = page.getByRole("group", { name: th("zoneLabel") });
+  await expect(period.getByRole("button", { name: th("rangeWeek"), exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(zones.getByRole("button", { name: th("filterZoneAll") })).toBeVisible();
+  // Period is one joined bar (a bordered container); zones are separate round pills.
+  const periodRadius = await period.getByRole("button").first().evaluate((e) => parseFloat(getComputedStyle(e).borderTopLeftRadius));
+  const zoneRadius = await zones.getByRole("button").first().evaluate((e) => parseFloat(getComputedStyle(e).borderTopLeftRadius));
+  expect(zoneRadius).toBeGreaterThan(periodRadius * 2);
+  expect(await period.evaluate((e) => getComputedStyle(e).borderTopWidth)).not.toBe("0px");
+  // On a phone the five periods fit on one line rather than wrapping.
+  const tops = await period.getByRole("button").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+  expect(new Set(tops).size).toBe(1);
 });
 
 test("bug 11 — a tree in a new zone appears in the zone filters", async ({ page }) => {

@@ -337,5 +337,19 @@ Three languages (`th` default, `my` Burmese, `en`). `lib/i18n/t.ts` resolves an 
 manager has a top nav plus a mobile bottom nav, both rendered from the one tab list in
 `components/manager/ManagerBottomNav.tsx`. Manager pages are client components on the query
 hooks; filters live in the URL (`?zone=AL&range=week`), so Back and shared links keep the view.
+Change them with `replaceQuery()` (`lib/client/replaceQuery.ts`, native `history.replaceState`),
+never `router.replace`: that is a navigation, and refetched the page from the server on every tap.
 Shared form pieces: `components/FormField.tsx` (label + red `*` + hint/error),
 `components/InfoTip.tsx` (ⓘ tap-to-explain — phones have no hover), `components/QueryState.tsx`.
+Period and zone filters use `PeriodBar` / `ZonePills` (`components/manager/FilterGroups.tsx`) —
+deliberately different shapes with 📅 / 📍 labels, because identical chip rows read as one choice.
+
+### Deployment (Vercel)
+
+Pushing to `main` deploys production; any other branch deploys a preview (Vercel Authentication
+required to view). Production uses the prod Supabase project (Singapore), previews the dev one
+(Ohio). `vercel.ts` runs all functions in `sin1`, next to the prod DB — every request makes
+several Supabase round trips, so the region must match production's. Vercel reads `vercel.ts`
+statically on git deploys, so values must be literals (a `VERCEL_ENV` check is dropped and the
+deploy fails); previews are therefore slower (Singapore ↔ Ohio), by choice.
+Analytics and Speed Insights are mounted in `app/layout.tsx`.

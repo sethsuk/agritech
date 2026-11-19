@@ -2,9 +2,11 @@
 
 import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { replaceQuery } from "@/lib/client/replaceQuery";
 import { useT } from "@/lib/i18n/LanguageContext";
 import { useTrees, useOverview, type TreeRow } from "@/lib/client/queries";
+import { ZonePills } from "@/components/manager/FilterGroups";
 import { parseZoneKey, zoneKey } from "@/lib/treeId";
 import { daysSince } from "@/lib/time";
 import { chipClass } from "@/lib/ui/badges";
@@ -31,7 +33,6 @@ export default function TreesPage() {
  */
 function Trees() {
   const { lang, tr } = useT();
-  const router = useRouter();
   const params = useSearchParams();
   const trees = useTrees();
   // Only for staleDays, which the dashboard snapshot already carries (cached).
@@ -48,7 +49,7 @@ function Trees() {
     const qs = new URLSearchParams(params);
     if (value) qs.set(key, value); else qs.delete(key);
     setShown(PAGE);
-    router.replace(`/trees?${qs}`, { scroll: false });
+    replaceQuery(qs);
   };
   const filtersActive = zone !== null || staleOnly || showRetired || query !== "";
 
@@ -91,7 +92,7 @@ function Trees() {
         </Link>
       </div>
 
-      <div className="mb-4 space-y-2">
+      <div className="mb-4 space-y-3">
         <label htmlFor="tree-search" className="sr-only">{tr("searchTreePlaceholder")}</label>
         <input
           id="tree-search"
@@ -103,15 +104,8 @@ function Trees() {
           placeholder={tr("searchTreePlaceholder")}
           className="h-11 w-full rounded-lg border border-line bg-surface px-3 text-base text-ink sm:max-w-sm"
         />
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label={tr("zoneLabel")}>
-          <button type="button" aria-pressed={zone === null} onClick={() => setParam("zone", null)} className={chipClass(zone === null)}>
-            {tr("filterZoneAll")}
-          </button>
-          {zones.map((z) => (
-            <button key={z} type="button" aria-pressed={zone === z} onClick={() => setParam("zone", z)} className={chipClass(zone === z)}>
-              {z}
-            </button>
-          ))}
+        <ZonePills label={tr("zoneLabel")} allLabel={tr("filterZoneAll")} zones={zones} value={zone} onChange={(z) => setParam("zone", z)} />
+        <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1">
             <button type="button" aria-pressed={staleOnly} onClick={() => setParam("stale", staleOnly ? null : "1")} className={chipClass(staleOnly)}>
               {tr("statStaleTrees", { n: staleDays })}
@@ -126,7 +120,7 @@ function Trees() {
             // with them vertically — it used to be a bare padded link that sat high.
             <button
               type="button"
-              onClick={() => { setQuery(""); router.replace("/trees", { scroll: false }); setShown(PAGE); }}
+              onClick={() => { setQuery(""); replaceQuery(""); setShown(PAGE); }}
               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-transparent px-3 text-xs font-semibold text-primary-ink underline-offset-2 hover:underline sm:min-h-8"
             >
               ✕ {tr("clearFilter")}

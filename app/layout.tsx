@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Noto_Sans, Noto_Sans_Thai, Noto_Sans_Myanmar } from "next/font/google";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import { QueryProvider } from "@/components/QueryProvider";
 import "./globals.css";
@@ -64,7 +65,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <QueryProvider>{children}</QueryProvider>
           <Toaster position="top-center" richColors closeButton duration={3000} />
         </LanguageProvider>
+        {/* Vercel Web Analytics (page views, no cookies) and Speed Insights (real-device
+            load/response times per route). Both only collect on Vercel deployments, and
+            each must be switched on in the project's dashboard tab of the same name. */}
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

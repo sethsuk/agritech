@@ -2,15 +2,17 @@
 
 import { Suspense, useMemo } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { replaceQuery } from "@/lib/client/replaceQuery";
 import { useT } from "@/lib/i18n/LanguageContext";
 import { alertSubtypeLabel, colorName, COLOR_ICON, flagLabel, taskLabel } from "@/lib/i18n/labels";
 import { useOverview, useTaskDefs, type Overview } from "@/lib/client/queries";
 import { parseZoneKey, zoneKey } from "@/lib/treeId";
 import { daysSince, formatDate, formatDateTime, RANGE_KEYS, type RangeKey } from "@/lib/time";
-import { ALERT_CATEGORY_ICON, ALERT_TIER, chipClass, validationBadgeClass } from "@/lib/ui/badges";
+import { ALERT_CATEGORY_ICON, ALERT_TIER, validationBadgeClass } from "@/lib/ui/badges";
 import { InfoTip } from "@/components/InfoTip";
 import { ErrorState, RefreshBar } from "@/components/QueryState";
+import { PeriodBar, ZonePills } from "@/components/manager/FilterGroups";
 import type { DictKey } from "@/lib/i18n/dictionary";
 
 const RANGE_LABEL: Record<RangeKey, DictKey> = {
@@ -33,7 +35,6 @@ export default function DashboardPage() {
  */
 function Dashboard() {
   const { lang, tr } = useT();
-  const router = useRouter();
   const params = useSearchParams();
   const overview = useOverview();
   const taskDefs = useTaskDefs();
@@ -48,7 +49,7 @@ function Dashboard() {
     if (next.zone) qs.set("zone", next.zone);
     else if (next.zone === null) qs.delete("zone");
     if (next.range) qs.set("range", next.range);
-    router.replace(`/dashboard?${qs}`, { scroll: false });
+    replaceQuery(qs);
   };
 
   const view = useMemo(() => (overview.data ? select(overview.data, zone, range) : null), [overview.data, zone, range]);
@@ -68,27 +69,20 @@ function Dashboard() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 space-y-2">
-        <div className="flex flex-wrap gap-2" role="group" aria-label={tr("zoneLabel")}>
-          <button type="button" aria-pressed={zone === null} onClick={() => setFilter({ zone: null })} className={chipClass(zone === null)}>
-            {tr("filterZoneAll")}
-          </button>
-          {overview.data?.zones.map((z) => {
-            const key = zoneKey(z.zone, z.side);
-            return (
-              <button key={key} type="button" aria-pressed={zone === key} onClick={() => setFilter({ zone: key })} className={chipClass(zone === key)}>
-                {key}
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap gap-2" role="group" aria-label={tr("filterRange")}>
-          {RANGE_KEYS.map((r) => (
-            <button key={r} type="button" aria-pressed={range === r} onClick={() => setFilter({ range: r })} className={chipClass(range === r)}>
-              {tr(RANGE_LABEL[r])}
-            </button>
-          ))}
-        </div>
+      <div className="mb-6 space-y-3">
+        <PeriodBar
+          label={tr("filterRange")}
+          options={RANGE_KEYS.map((r) => ({ value: r, label: tr(RANGE_LABEL[r]) }))}
+          value={range}
+          onChange={(r) => setFilter({ range: r })}
+        />
+        <ZonePills
+          label={tr("zoneLabel")}
+          allLabel={tr("filterZoneAll")}
+          zones={(overview.data?.zones ?? []).map((z) => zoneKey(z.zone, z.side))}
+          value={zone}
+          onChange={(z) => setFilter({ zone: z })}
+        />
       </div>
 
       {overview.isError && !overview.data && (

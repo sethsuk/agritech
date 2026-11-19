@@ -2,15 +2,17 @@
 
 import { Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { replaceQuery } from "@/lib/client/replaceQuery";
 import { useT } from "@/lib/i18n/LanguageContext";
 import { flagLabel, sortTaskDefs, taskLabel, validationStatusLabel } from "@/lib/i18n/labels";
 import { taskDisplayName } from "@/lib/i18n/t";
 import { useLogGrades, useLogs, useOverview, useTaskDefs, useWorkers, type LogFilters } from "@/lib/client/queries";
 import { formatDateTime, RANGE_KEYS, type RangeKey } from "@/lib/time";
 import { parseZoneKey, zoneKey } from "@/lib/treeId";
-import { chipClass, validationBadgeClass } from "@/lib/ui/badges";
+import { validationBadgeClass } from "@/lib/ui/badges";
 import { ErrorState, RefreshBar } from "@/components/QueryState";
+import { PeriodBar, ZonePills } from "@/components/manager/FilterGroups";
 import type { DictKey } from "@/lib/i18n/dictionary";
 
 const RANGE_LABEL: Record<RangeKey, DictKey> = {
@@ -33,7 +35,6 @@ export default function LogsPage() {
  */
 function Logs() {
   const { lang, tr } = useT();
-  const router = useRouter();
   const params = useSearchParams();
   const taskDefs = useTaskDefs();
   const workers = useWorkers();
@@ -55,7 +56,7 @@ function Logs() {
     const qs = new URLSearchParams(params);
     if (value) qs.set(key, value); else qs.delete(key);
     if (key !== "page") qs.delete("page");
-    router.replace(`/logs?${qs}`, { scroll: key === "page" });
+    replaceQuery(qs, { scrollTop: key === "page" });
   };
 
   const totalPages = logs.data ? Math.max(1, Math.ceil(logs.data.total / logs.data.pageSize)) : 1;
@@ -70,27 +71,20 @@ function Logs() {
         <RefreshBar updatedAt={logs.dataUpdatedAt || undefined} fetching={logs.isFetching} onRefresh={() => logs.refetch()} />
       </div>
 
-      <div className="mb-4 space-y-2">
-        <div className="flex flex-wrap gap-2" role="group" aria-label={tr("filterRange")}>
-          {RANGE_KEYS.map((r) => (
-            <button key={r} type="button" aria-pressed={filters.range === r} onClick={() => setFilter("range", r === "all" ? "" : r)} className={chipClass(filters.range === r)}>
-              {tr(RANGE_LABEL[r])}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-2" role="group" aria-label={tr("zoneLabel")}>
-          <button type="button" aria-pressed={!filters.zone} onClick={() => setFilter("zone", "")} className={chipClass(!filters.zone)}>
-            {tr("filterZoneAll")}
-          </button>
-          {overview.data?.zones.map((z) => {
-            const key = zoneKey(z.zone, z.side);
-            return (
-              <button key={key} type="button" aria-pressed={filters.zone === key} onClick={() => setFilter("zone", key)} className={chipClass(filters.zone === key)}>
-                {key}
-              </button>
-            );
-          })}
-        </div>
+      <div className="mb-4 space-y-3">
+        <PeriodBar
+          label={tr("filterRange")}
+          options={RANGE_KEYS.map((r) => ({ value: r, label: tr(RANGE_LABEL[r]) }))}
+          value={filters.range as RangeKey}
+          onChange={(r) => setFilter("range", r === "all" ? "" : r)}
+        />
+        <ZonePills
+          label={tr("zoneLabel")}
+          allLabel={tr("filterZoneAll")}
+          zones={(overview.data?.zones ?? []).map((z) => zoneKey(z.zone, z.side))}
+          value={filters.zone || null}
+          onChange={(z) => setFilter("zone", z ?? "")}
+        />
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <Select id="f-task" label={tr("filterTask")} value={filters.task} onChange={(v) => setFilter("task", v)}>
             <option value="">{tr("allOption")}</option>
