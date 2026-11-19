@@ -14,9 +14,6 @@ import type { VercelConfig } from "@vercel/config/v1";
  * in sin1 and show it — production can't silently drift back to the US.
  * `vercel inspect <url>` shows the region a deployment got.
  */
-const env = process.env.VERCEL_ENV;
-const region = env === "preview" || env === "development" ? "cle1" : "sin1";
-
 export const config: VercelConfig = {
-  regions: [region],
+  regions: [process.env.VERCEL_ENV === "preview" || process.env.VERCEL_ENV === "development" ? "cle1" : "sin1"],
 };
