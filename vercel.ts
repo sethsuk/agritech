@@ -1,19 +1,18 @@
 import type { VercelConfig } from "@vercel/config/v1";
 
 /**
- * Where the server code (API routes, server components) runs, per environment. Each
- * request makes several round trips to Supabase (who is this? what role? then the data),
- * so the function must sit next to its database — the default, iad1 (Washington DC),
- * put production a Pacific crossing away from its database on every one of them.
+ * Where the server code (API routes, server components) runs. Each request makes several
+ * round trips to Supabase (who is this? what role? then the data), so the functions must
+ * sit next to the production database — the default, iad1 (Washington DC), put a Pacific
+ * crossing on every one of them. sin1 (Singapore) is next to the prod Supabase
+ * (ap-southeast-1) and close to Thailand.
  *
- *   production → sin1 (Singapore): next to the prod Supabase (ap-southeast-1) and Thailand
- *   preview    → cle1 (Cleveland): next to the dev Supabase (us-east-2, Ohio)
- *
- * VERCEL_ENV is set at build time. Preview is the explicit case and everything else
- * falls through to Singapore, so if the variable were ever missing, a preview would land
- * in sin1 and show it — production can't silently drift back to the US.
- * `vercel inspect <url>` shows the region a deployment got.
+ * One region for every environment: on git deploys Vercel reads this file statically
+ * (it is not executed), so a computed value such as a VERCEL_ENV check is dropped and the
+ * deployment fails with "`regions` should NOT have fewer than 1 items". Keep these
+ * literals. The cost is that previews (dev Supabase, Ohio) are slower — an accepted
+ * trade-off; local dev is unaffected. `vercel inspect <url>` shows a deployment's region.
  */
 export const config: VercelConfig = {
-  regions: [process.env.VERCEL_ENV === "preview" || process.env.VERCEL_ENV === "development" ? "cle1" : "sin1"],
+  regions: ["sin1"],
 };

@@ -348,6 +348,8 @@ deliberately different shapes with 📅 / 📍 labels, because identical chip ro
 
 Pushing to `main` deploys production; any other branch deploys a preview (Vercel Authentication
 required to view). Production uses the prod Supabase project (Singapore), previews the dev one
-(Ohio). `vercel.ts` puts the functions next to each: `sin1` for production, `cle1` for previews —
-every request makes several Supabase round trips, so the function region must match the DB's.
+(Ohio). `vercel.ts` runs all functions in `sin1`, next to the prod DB — every request makes
+several Supabase round trips, so the region must match production's. Vercel reads `vercel.ts`
+statically on git deploys, so values must be literals (a `VERCEL_ENV` check is dropped and the
+deploy fails); previews are therefore slower (Singapore ↔ Ohio), by choice.
 Analytics and Speed Insights are mounted in `app/layout.tsx`.
