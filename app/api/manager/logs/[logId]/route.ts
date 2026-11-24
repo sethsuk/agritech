@@ -23,17 +23,29 @@ export async function GET(_request: Request, ctx: { params: Promise<{ logId: str
       .or(`log_id.eq.${rootId},correction_of_log_id.eq.${rootId}`)
       .order("submitted_at", { ascending: true }),
     admin.from("alerts").select("alert_id, tier, subtype, status, created_at").eq("triggered_by_log_id", rootId),
+    // task_logs.worker_id references workers, and workers.worker_id references users, so
+    // the name is two hops away. (`users:worker_id(…)` looked up display_name on workers,
+    // failed, and — unchecked — left `root` null, so every log page showed an error.)
     admin.from("task_logs")
-      .select("log_id, tree_id, task_def_id, worker_id, submitted_at, gps_delta_meters, photo_url, validation_flags, form_data, users:worker_id(display_name)")
+      .select("log_id, tree_id, task_def_id, worker_id, submitted_at, gps_delta_meters, photo_url, validation_flags, form_data, workers(users(display_name))")
       .eq("log_id", rootId)
       .maybeSingle(),
   ]);
 
+  const failed = [effective, trail, alerts, root].find((r) => r.error);
+  if (failed) {
+    console.error("log detail failed:", failed.error);
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
+  }
+
+  const { workers, ...rootRow } = root.data as unknown as Record<string, unknown> & {
+    workers: { users: { display_name: string } | null } | null;
+  };
   return NextResponse.json({
     rootId,
     // Null when the record was voided — the root row is still returned for the trail.
     effective: effective.data,
-    root: root.data,
+    root: { ...rootRow, worker_name: workers?.users?.display_name ?? null },
     trail: trail.data ?? [],
     alerts: alerts.data ?? [],
   });
