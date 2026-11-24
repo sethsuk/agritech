@@ -77,6 +77,7 @@ export async function POST(request: Request) {
       qr_code: qrCodeForTreeId(treeId),
       lat,
       long,
+      location_set_at: new Date().toISOString(), // captured on site by the form
       zone: parsedId.zone,
       side: parsedId.side,
       row_num: parsedId.rowNum,

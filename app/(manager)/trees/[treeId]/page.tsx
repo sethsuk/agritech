@@ -151,7 +151,7 @@ export default function ManagerTreeDetailPage() {
         <GpsField
           value={gps}
           onChange={setGps}
-          current={{ lat: Number(tree.lat), long: Number(tree.long) }}
+          current={tree.location_set_at ? { lat: Number(tree.lat), long: Number(tree.long) } : null}
           buttonLabel={tr("recaptureLocation")}
         />
         {dirty && <p className="text-xs font-semibold text-caution-ink" role="status">● {tr("unsavedChanges")}</p>}

@@ -187,6 +187,11 @@ export const dict = {
   plantedDateLabel: { th: "วันที่ปลูก", my: "စိုက်ပျိုးသည့်ရက်", en: "Planted date" },
   gpsLocationLabel: { th: "ตำแหน่ง GPS", my: "GPS တည်နေရာ", en: "GPS location" },
   currentPrefix: { th: "ปัจจุบัน", my: "လက်ရှိ", en: "Current" },
+  locationNotCaptured: {
+    th: "ยังไม่ได้บันทึกพิกัดจริงของต้นนี้ — ระบบจะยังไม่ตรวจตำแหน่ง GPS ตอนสแกน จนกว่าจะบันทึกพิกัด",
+    my: "ဒီပင်ရဲ့ တကယ့်တည်နေရာကို မမှတ်ရသေးပါ — တည်နေရာမှတ်ပြီးမှ စကင်ဖတ်ချိန်မှာ GPS ကို စစ်ဆေးပါမယ်",
+    en: "This tree's real location hasn't been captured yet — scans won't be checked against GPS until it is",
+  },
   readingLocation: { th: "กำลังอ่านตำแหน่ง...", my: "တည်နေရာ ဖတ်နေသည်...", en: "Reading location..." },
   recaptureLocation: { th: "📍 จับตำแหน่งใหม่", my: "📍 တည်နေရာ အသစ်ယူရန်", en: "📍 Re-capture location" },
   saveEditsButton: { th: "บันทึกการแก้ไข", my: "ပြင်ဆင်ချက်များ သိမ်းရန်", en: "Save changes" },

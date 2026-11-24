@@ -58,14 +58,19 @@ test("bug 12 — re-capturing the GPS location and saving updates the coordinate
   await date.fill("01/01/2020");
   await expect(date).toHaveValue("01/01/2020");
 
+  // A test tree has placeholder coordinates, so the page says its location isn't captured
+  // (and scans skip the GPS check); saving a captured location switches the check on.
+  await expect(page.getByText(th("locationNotCaptured"))).toBeVisible();
   await page.getByRole("button", { name: th("recaptureLocation") }).click();
   await expect(page.getByText("18.812346, 99.012346")).toBeVisible();
   await page.getByRole("button", { name: th("saveEditsButton") }).click();
   await expect(page.getByText(th("savedToast"))).toBeVisible();
+  await expect(page.getByText(th("locationNotCaptured"))).toHaveCount(0);
 
-  const { data } = await admin.from("trees").select("lat, long").eq("tree_id", treeId).single();
+  const { data } = await admin.from("trees").select("lat, long, location_set_at").eq("tree_id", treeId).single();
   expect(Number(data!.lat)).toBeCloseTo(18.8123456, 6);
   expect(Number(data!.long)).toBeCloseTo(99.0123456, 6);
+  expect(data!.location_set_at).not.toBeNull();
 });
 
 test("bug 15 — an invalid planted date is called out on the new-tree form", async ({ page }) => {

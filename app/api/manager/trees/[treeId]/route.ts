@@ -76,6 +76,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ treeId: s
   if (lat !== undefined && long !== undefined) {
     update.lat = lat;
     update.long = long;
+    update.location_set_at = new Date().toISOString(); // switches the GPS check on
   }
   if (status !== undefined) {
     update.status = status;

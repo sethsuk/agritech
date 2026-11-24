@@ -35,6 +35,13 @@ export function checkPresence(params: {
     flags.push("qr_mismatch");
   }
 
+  // No GPS verdict for a tree whose real location was never captured: its coordinates
+  // are a placeholder, so any distance would be meaningless and every scan would raise a
+  // false tier-1 fraud alert. The check switches on per tree once it is located.
+  if (!params.tree.location_set_at) {
+    return { flags, gpsDistanceMeters };
+  }
+
   if (params.gpsLat === null || params.gpsLong === null) {
     flags.push("gps_missing");
   } else {
