@@ -25,6 +25,8 @@ npm run db:migrate      # runs supabase/migrations/*.sql in order via scripts/mi
 npm run db:seed:trees   # inserts 1035 trees in zone A (AL1-1…AL23-23, AR1-1…AR22-23)
 tsx scripts/seed-users.ts   # creates/repairs the 5 dummy accounts (owner, manager, 3 workers)
 npm run setup:storage   # creates the `task-photos` Supabase Storage bucket
+ENV_FILE=.env.prod npm run seed:demo   # test_ accounts (random creds, printed once) + ~4 weeks of sample logs
+ENV_FILE=.env.prod npm run seed:demo -- --reset --remove-accounts   # remove ALL test_ data before real use
 ALLOW_DB_RESET=true npm run db:reset:dev   # DEV ONLY: wipe public schema → migrate → both seeds
 
 npm run test:e2e        # Playwright: starts `dev:test`, runs phone (Pixel 7, iPhone 14) + desktop projects
