@@ -88,7 +88,8 @@ lockout/CAPTCHA). The deterministic photo-audit draw (`lib/photoAudit.ts`) can b
   `sync_set`, `set_available_at`, `dashboard_snapshot`; (`016`) `rollup_apply`, `rollup_rebuild`,
   `fruit_by_grade`. Migrations from `015` on are additive and re-runnable (`IF NOT EXISTS`, self
   backfilling) — prefer that over editing old table migrations, so deployed DBs never need a wipe.
-  `018_security_hardening.sql` runs last on every `db:migrate`: it pins `search_path` on every
+  `018_security_hardening.sql` must run after every migration that creates functions (later
+  ones like `019` only add columns) on every `db:migrate`: it pins `search_path` on every
   function in `public` (a `CREATE OR REPLACE` resets it, so it must re-run after 013/014/016),
   restricts all RLS policies to `TO authenticated`, and revokes anon/`worker_zones` access to the RLS
   helper functions. New functions are covered automatically; `tests/sql/05_*` fails if one isn't.
@@ -203,7 +204,9 @@ highlight it.
 - `presence.ts` — QR value must match `tree.qr_code`; a typed tree ID gets `manual_entry`
   (reviewable, not fraud); GPS distance (haversine) vs. `GPS_TOLERANCE_METERS` (default 15m) →
   `qr_mismatch` / `gps_missing` / `gps_off_tree` flags. Only `qr_mismatch` / `gps_off_tree` raise a
-  tier-1 fraud alert.
+  tier-1 fraud alert. The GPS part is skipped (no flags, no distance) for a tree whose
+  `location_set_at` is null — seeded trees have placeholder coordinates until someone
+  captures the real spot (new-tree form or "re-capture location", which set it; `019`).
 - `timing.ts` — completion time and QR-to-submit time below `task_definitions.min_*_seconds` →
   `completion_too_fast` / `qr_to_submit_too_fast` flags.
 - `fields.ts` — every `required` field is present and option-backed fields (`dropdown`,

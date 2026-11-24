@@ -103,8 +103,9 @@ export function GpsField({
 }: {
   value: GpsFix | null;
   onChange: (fix: GpsFix) => void;
-  /** Saved coordinates, shown for comparison on the edit page. */
-  current?: { lat: number; long: number };
+  /** Saved coordinates, shown for comparison on the edit page; null = never captured
+   *  on site (placeholder coordinates, GPS check off for this tree). */
+  current?: { lat: number; long: number } | null;
   required?: boolean;
   buttonLabel: string;
 }) {
@@ -136,6 +137,9 @@ export function GpsField({
         <p className="mb-2 text-xs text-muted">
           {tr("currentPrefix")}: <span className="font-mono">{current.lat.toFixed(6)}, {current.long.toFixed(6)}</span>
         </p>
+      )}
+      {current === null && (
+        <p className="mb-2 text-xs font-semibold text-caution-ink">📍 {tr("locationNotCaptured")}</p>
       )}
       <button
         id="tree-gps"

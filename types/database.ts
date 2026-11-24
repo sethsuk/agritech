@@ -111,6 +111,8 @@ export interface DbTree {
   /** NUMERIC columns arrive from PostgREST as strings — parse with Number(). */
   lat: number | string;
   long: number | string;
+  /** When lat/long were captured on site; null = placeholder, GPS check skipped (019). */
+  location_set_at: string | null;
   zone: string;
   side: "L" | "R";
   row_num: number;
