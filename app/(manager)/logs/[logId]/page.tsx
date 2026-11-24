@@ -65,7 +65,7 @@ export default function LogDetailPage() {
           <div>
             <dt className="text-xs text-muted">{tr("submittedByLabel")}</dt>
             <dd className="font-semibold text-ink">
-              <Link href={`/workers/${root.worker_id}`} className="hover:underline">{root.users?.display_name ?? "—"}</Link>
+              <Link href={`/workers/${root.worker_id}`} className="hover:underline">{root.worker_name ?? "—"}</Link>
             </dd>
           </div>
           <div>

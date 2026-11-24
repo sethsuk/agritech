@@ -213,8 +213,8 @@ export interface LogDetail {
   root: {
     log_id: string; tree_id: string; task_def_id: string; worker_id: string; submitted_at: string;
     gps_delta_meters: number | string | null; photo_url: string | null; validation_flags: string[];
-    form_data: Record<string, unknown>; users: { display_name: string } | null;
-  } | null;
+    form_data: Record<string, unknown>; worker_name: string | null;
+  };
   trail: {
     log_id: string; correction_type: "correction" | "void" | null; correction_reason: string | null;
     submitted_at: string; form_data: Record<string, unknown>;
